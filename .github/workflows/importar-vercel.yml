@@ -1,0 +1,31 @@
+#sincronizacion automatica con la cuenta de vercel (trabajos de programacion)
+#corre cada 6 horas, o manual desde la pestana "Actions" del repo
+name: importar-vercel
+
+on:
+  schedule:
+    - cron: '30 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: instalar node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: instalar dependencias
+        working-directory: backend
+        run: npm install
+
+      - name: importar o actualizar proyectos desde vercel
+        working-directory: backend
+        run: node scripts/importar-vercel.js
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}

@@ -1,0 +1,30 @@
+#sincronizacion automatica con el feed de behance
+#corre cada 6 horas, o manual desde la pestana "Actions" del repo
+name: importar-behance
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: instalar node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: instalar dependencias
+        working-directory: backend
+        run: npm install
+
+      - name: importar o actualizar proyectos desde behance
+        working-directory: backend
+        run: node scripts/importar-behance.js
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
