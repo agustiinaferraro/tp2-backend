@@ -20,11 +20,9 @@ jobs:
           node-version: 22
 
       - name: instalar dependencias
-        working-directory: backend
         run: npm install
 
       - name: importar o actualizar proyectos desde vercel
-        working-directory: backend
         run: node scripts/importar-vercel.js
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}

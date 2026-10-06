@@ -20,11 +20,9 @@ jobs:
           node-version: 22
 
       - name: instalar dependencias
-        working-directory: backend
         run: npm install
 
       - name: importar o actualizar proyectos desde behance
-        working-directory: backend
         run: node scripts/importar-behance.js
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
