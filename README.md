@@ -5,14 +5,14 @@ API REST del portfolio construida con **Node.js + Express + Mongoose**, conectad
 ## Estructura
 
 ```
-backend/
+.
 ├── server.js          # Punto de entrada: config y arranque del servidor
 ├── package.json
 ├── .env.example       # Plantilla de variables de entorno (copiá a .env)
-├── config/            # Conexión a MongoDB (a completar)
+├── config/            # Conexión a MongoDB
 ├── models/            # Modelos de datos (proyectos, mensajes, servicios...)
 └── routes/            # Rutas/endpoints de la API
-└── scripts/           # Scripts utilitarios (importación desde Behance)
+└── scripts/           # Scripts utilitarios (importación desde Behance y Vercel)
 ```
 
 ## Puesta en marcha
