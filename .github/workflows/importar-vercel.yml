@@ -4,8 +4,10 @@
 name: importar-vercel
 
 on:
-  schedule:
-    - cron: '30 */6 * * *'
+  #el schedule queda desactivado hasta cargar el secret VERCEL_TOKEN
+  #para activarlo, descomentá las 2 lineas de abajo y borrá las de workflow_dispatch
+  #schedule:
+  #  - cron: '30 */6 * * *'
   workflow_dispatch:
 
 jobs:
