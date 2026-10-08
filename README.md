@@ -2,6 +2,10 @@
 
 API REST del portfolio construida con **Node.js + Express + Mongoose**, conectada a **MongoDB Atlas**.
 
+> **Documentación del examen:** [`docs/consigna.md`](docs/consigna.md) · [`docs/proceso.md`](docs/proceso.md) · [`docs/defensa.md`](docs/defensa.md)
+>
+> El proyecto está separado en dos repositorios: **este** (la API y la base de datos) y [`tp2-frontend`](https://github.com/agustiinaferraro/tp2-frontend) (el sitio web). Sitios publicados: [frontend](https://agustinaportfolio.vercel.app) · [backend](https://agustinaportfolio-api.vercel.app).
+
 ## Estructura
 
 ```
