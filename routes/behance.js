@@ -242,11 +242,10 @@ router.post('/sincronizar', esAdmin, async (req, res) => {
 });
 
 //get a /api/behance/sincronizar
-//lo usa el cron de vercel (header x-vercel-cron) o un pedido manual con la clave en ?clave=
+//lo usa el cron de vercel (header x-vercel-cron)
 router.get('/sincronizar', async (req, res) => {
   const esCron = Boolean(req.headers['x-vercel-cron']);
-  const claveOk = process.env.ADMIN_CLAVE && req.query.clave && req.query.clave === process.env.ADMIN_CLAVE;
-  if (!esCron && !claveOk) {
+  if (!esCron) {
     return res.status(401).json({ mensaje: 'No autorizado' });
   }
   try {

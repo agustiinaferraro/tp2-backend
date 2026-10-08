@@ -35,20 +35,20 @@ Preparación para la instancia de **Examen Final — Programación Multimedial I
 - **`backend/src`**
   - `server.js` — arranque. `routes/proyectos.js`, `routes/servicios.js`, `routes/mensajes.js`, `routes/admin.js` — endpoints. `models/` — esquemas.
   - `scripts/importar-behance.js` — importa proyectos desde el RSS de Behance.
-  - `.env` — `MONGODB_URI`, `ADMIN_USUARIO`, `ADMIN_CLAVE` (no se sube al repo).
+  - `.env` — `MONGODB_URI`, `ADMIN_EMAIL` y las credenciales de firebase admin (no se sube al repo).
 
 **Ejercicios de modificación en vivo** (practicá estos):
 1. **Cambiar un color de identidad:** en `frontend/src/styles/global.css` (o en el componente) cambiá el acento `#a78bfa` o en `Layout.astro` el `bg-zinc-950`.
 2. **Cambiar un texto:** editá un párrafo en `frontend/src/pages/sobre-mi.astro` o `index.astro`.
 3. **Agregar un servicio/página:** sumá una entrada con slug en `frontend/src/data/servicios.js` → se genera la ruta en el build.
 4. **Cambiar qué se ve en la home:** en el panel `/admin`, editá un proyecto y tildá "Destacado en la portada".
-5. **Agregar un proyecto:** desde `/admin` (usuario `agustina` + clave) cargá un proyecto con imagen; la grilla y el detalle lo muestran al instante.
+5. **Agregar un proyecto:** entrá a `/admin` con tu cuenta de dueña (el panel se abre solo si esa cuenta es la de la dueña) y cargá un proyecto con imagen; la grilla y el detalle lo muestran al instante.
 
 ## 4. Preguntas difíciles típicas (para no quedarse en blanco)
 
 - **"¿Qué pasa si la API se cae?"** → Los componentes muestran "Verificá que el backend esté corriendo" (estado de error). El sitio estático sigue funcionando; solo las secciones dinámicas avisan que no hay datos.
 - **"¿Por qué MongoDB y no otro?"** → Es un servicio administrado en la nube (Atlas, plan gratis), fácil de conectar con Mongoose y con el deploy en Vercel.
-- **"¿Cómo está protegido el admin?"** → Usuario y clave en variables de entorno (`ADMIN_USUARIO`, `ADMIN_CLAVE`), se verifican en `POST /api/admin/verificar` y cada operación de escritura pasa por el middleware `esAdmin` (clave en header `x-admin-clave`). La sesión vive en `sessionStorage` del navegador.
+- **"¿Cómo está protegido el admin?"** → El panel solo se abre para la **cuenta de Firebase de la dueña**: cada operación de escritura pasa por el middleware `esAdmin`, que valida el token (`Authorization: Bearer`) y comprueba que el email sea el de la dueña (`ADMIN_EMAIL`). Puede saberlo con `GET /api/admin/soy-dueno`. No hay contraseñas guardadas en el navegador: el token vive en la sesión y expira solo.
 - **"¿Qué pasaría si Behance cambia su feed?"** → La web no depende de Behance en runtime: el feed se usa solo en el script de importación. Si cambia, re-ejecutás el import (o usás el panel).
 - **"¿Cómo se maneja el 'vacío'?"** → Cada lista muestra un mensaje específico (grilla: "Todavía no hay proyectos…"; servicio sin proyectos: texto propio; buscador: "sin resultados").
 - **"¿Cuáles son las limitaciones?"** → Miniaturas de Behance en calidad media (se reemplazan por imágenes propias), categorías nuevas sin página hasta el redeploy, base64 en la base (a futuro CDN), sin paginación aún.

@@ -64,5 +64,5 @@ El script `scripts/importar-vercel.js` lee la **API de Vercel** con un token (`V
 Deployado en Vercel como función serverless: https://agustinaportfolio-api.vercel.app
 
 - La variable `MONGODB_URI` se configura en Vercel (no se sube al repositorio).
-- Las variables `ADMIN_USUARIO` y `ADMIN_CLAVE` (credenciales del panel `/admin`) también se configuran en Vercel.
+- La variable `ADMIN_EMAIL` (email de la cuenta de firebase de la dueña, que es la única que puede entrar al panel `/admin`) también se configura en Vercel.
 - `vercel.json` define el build con `@vercel/node` y enruta todas las peticiones a `server.js`.

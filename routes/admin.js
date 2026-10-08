@@ -1,34 +1,29 @@
-//rutas de administracion: validan la clave para entrar al panel del admin
+//rutas de administracion: informan si la cuenta logueada es la dueña del sitio
 import { Router } from 'express';
+import { verificarTokenFirebase } from '../config/firebaseAdmin.js';
 
 const router = Router();
 
-//get a /api/admin/dueno
-//es publico: dice en que cuenta de firebase esta la dueña del sitio,
-//para que "mi cuenta" pueda ofrecerle la entrada al panel
-router.get('/dueno', (req, res) => {
-  res.json({ email: process.env.ADMIN_EMAIL ?? 'ferraroagustina19@gmail.com' });
-});
+//email de la cuenta de firebase que es dueña del sitio
+const EMAIL_DUENA = (process.env.ADMIN_EMAIL ?? 'ferraroagustina19@gmail.com').toLowerCase();
 
-//post a /api/admin/verificar
-//recibe usuario y clave y responde si son validos o no
-//si falla, indica cual de los dos campos no coincide (usuario/clave) para marcarlo en rojo
-router.post('/verificar', (req, res) => {
-  const { usuario, clave } = req.body ?? {};
-
-  const usuarioOk = !!process.env.ADMIN_USUARIO && usuario === process.env.ADMIN_USUARIO;
-  const claveOk = !!process.env.ADMIN_CLAVE && clave === process.env.ADMIN_CLAVE;
-
-  if (usuarioOk && claveOk) {
-    return res.json({ ok: true });
+//get a /api/admin/soy-dueno
+//con la sesion de la cuenta (header authorization) responde si esa cuenta es la dueña.
+//no expone el email: el frontend solo necesita saber si puede abrir el panel.
+router.get('/soy-dueno', async (req, res) => {
+  const autorizacion = req.header('authorization');
+  if (!autorizacion?.startsWith('Bearer ')) {
+    return res.json({ esDueno: false });
   }
 
-  res.status(401).json({
-    ok: false,
-    mensaje: 'Ese usuario o contraseña no pertenece al dueño del portfolio',
-    usuario: usuarioOk,
-    clave: claveOk,
-  });
+  try {
+    const usuario = await verificarTokenFirebase(autorizacion.slice(7));
+    const email = (usuario.email ?? '').toLowerCase();
+    return res.json({ esDueno: Boolean(email) && email === EMAIL_DUENA });
+  } catch {
+    //token invalido, vencido o firebase sin configurar: no es la dueña
+    return res.json({ esDueno: false });
+  }
 });
 
 export default router;

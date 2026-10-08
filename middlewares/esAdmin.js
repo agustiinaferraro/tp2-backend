@@ -1,6 +1,6 @@
 //middleware compartido de administracion
-//acepta el login clasico del panel (clave en el header x-admin-clave) o
-//la sesion de firebase de la duena (token en el header authorization)
+//solo deja pasar a la dueña del sitio: valida la sesion de firebase que llega
+//en el header authorization (formato bearer) y comprueba que el email sea el suyo
 //todas las rutas que solo puede tocar la dueña pasan por aca
 import { verificarTokenFirebase } from '../config/firebaseAdmin.js';
 
@@ -8,25 +8,17 @@ import { verificarTokenFirebase } from '../config/firebaseAdmin.js';
 const EMAIL_DUENA = process.env.ADMIN_EMAIL ?? 'ferraroagustina19@gmail.com';
 
 export default async function esAdmin(req, res, next) {
-  //primero se prueba la clave clasica del panel de administracion
-  const clave = req.header('x-admin-clave');
-  if (process.env.ADMIN_CLAVE && clave === process.env.ADMIN_CLAVE) {
-    return next();
-  }
+  const autorizacion = req.header('authorization');
 
-  //sin clave: se prueba con la cuenta de firebase de la dueña
-  if (!clave) {
-    const autorizacion = req.header('authorization');
-    if (autorizacion?.startsWith('Bearer ')) {
-      try {
-        const usuario = await verificarTokenFirebase(autorizacion.slice(7));
-        const email = (usuario.email ?? '').toLowerCase();
-        if (email && email === EMAIL_DUENA.toLowerCase()) {
-          return next();
-        }
-      } catch {
-        //token invalido o firebase sin configurar: se sigue como no autorizado
+  if (autorizacion?.startsWith('Bearer ')) {
+    try {
+      const usuario = await verificarTokenFirebase(autorizacion.slice(7));
+      const email = (usuario.email ?? '').toLowerCase();
+      if (email && email === EMAIL_DUENA.toLowerCase()) {
+        return next();
       }
+    } catch {
+      //token invalido o firebase sin configurar: se sigue como no autorizado
     }
   }
 
