@@ -1,7 +1,7 @@
 //rutas de la api para el perfil
 //el get es publico (lo usan footer, contacto y el avatar), el put pide clave de administrador
 import { Router } from 'express';
-import Perfil from '../models/Perfil.js';
+import Perfil, { CONTENIDO_POR_DEFECTO } from '../models/Perfil.js';
 import esAdmin from '../middlewares/esAdmin.js';
 
 const router = Router();
@@ -12,7 +12,13 @@ router.get('/', async (req, res) => {
   try {
     let perfil = await Perfil.findOne().lean();
     if (!perfil) {
-      perfil = await Perfil.create({});
+      perfil = (await Perfil.create({})).toObject();
+    }
+    //si el perfil es viejo y todavia no tiene el contenido de "sobre mi", se completa con los defaults
+    for (const campo of ['estadisticas', 'recorrido', 'habilidades', 'certificaciones']) {
+      if (!Array.isArray(perfil[campo]) || perfil[campo].length === 0) {
+        perfil[campo] = CONTENIDO_POR_DEFECTO[campo];
+      }
     }
     res.json(perfil);
   } catch (error) {
@@ -24,7 +30,7 @@ router.get('/', async (req, res) => {
 //actualiza el perfil (o lo crea si no existe) con los campos que lleguen
 router.put('/', esAdmin, async (req, res) => {
   try {
-    const { nombre, titulo, sobreMi, foto, portada, email, telefono, whatsapp, redes } = req.body ?? {};
+    const { nombre, titulo, sobreMi, foto, portada, email, telefono, whatsapp, redes, estadisticas, recorrido, habilidades, certificaciones } = req.body ?? {};
 
     const cambios = {};
     if (nombre !== undefined) cambios.nombre = String(nombre).trim() || 'Agustina Ferraro';
@@ -42,6 +48,11 @@ router.put('/', esAdmin, async (req, res) => {
       }
       cambios.redes = r;
     }
+    //contenido de "sobre mi": se guarda tal cual llega (son listas de objetos)
+    if (Array.isArray(estadisticas)) cambios.estadisticas = estadisticas;
+    if (Array.isArray(recorrido)) cambios.recorrido = recorrido;
+    if (Array.isArray(habilidades)) cambios.habilidades = habilidades;
+    if (Array.isArray(certificaciones)) cambios.certificaciones = certificaciones;
 
     //se usa el primero que haya (si no hay ninguno, se crea)
     const existente = await Perfil.findOne();
