@@ -4,6 +4,13 @@ node_modules/
 # Variables de entorno
 .env
 .env.production
+.env.local
+.env.vercel
+.env.development
+
+# Credenciales de firebase admin (nunca subir)
+service-account.json
+serviceAccountKey.json
 
 # Logs
 npm-debug.log*
