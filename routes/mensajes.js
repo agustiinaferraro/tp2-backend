@@ -28,9 +28,11 @@ router.get('/conversaciones', esAdmin, async (req, res) => {
       { $sort: { createdAt: -1 } },
       {
         $group: {
-          _id: { $toLower: '$email' },
+          //se agrupa por email normalizado (sin espacios y en minusculas): asi la misma
+          //persona cae siempre en el mismo chat aunque el email venga con mayusculas o espacios
+          _id: { $toLower: { $trim: { input: '$email' } } },
           nombre: { $first: '$nombre' },
-          email: { $first: '$email' },
+          email: { $first: { $toLower: { $trim: { input: '$email' } } } },
           //la cantidad cuenta solo los mensajes de la persona, no las respuestas del admin
           cantidad: { $sum: { $cond: [{ $ifNull: ['$esRespuesta', false] }, 0, 1] } },
           ultimaFecha: { $first: '$createdAt' },
@@ -104,7 +106,7 @@ router.post('/conversaciones/:email/respuesta', esAdmin, async (req, res) => {
       return res.status(400).json({ mensaje: 'La respuesta no puede estar vacía' });
     }
 
-    const emailNormalizado = String(email).toLowerCase();
+    const emailNormalizado = String(email).trim().toLowerCase();
     const nombreResponde = String(nombre).trim() || 'Agustina Ferraro';
 
     //marca como respondido el mensaje mas nuevo de esa persona
@@ -164,6 +166,27 @@ router.post('/', esAutenticado, async (req, res) => {
     res.status(201).json({ mensaje: 'Mensaje recibido', datos: nuevoMensaje.toObject() });
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al guardar el mensaje', error: error.message });
+  }
+});
+
+//delete a /api/mensajes/conversaciones/:email (solo admin)
+//borra todos los mensajes de la conversacion de esa persona (elimina el chat completo)
+router.delete('/conversaciones/:email', esAdmin, async (req, res) => {
+  try {
+    const emailNormalizado = String(req.params.email).trim().toLowerCase();
+
+    //se comparan los emails normalizados (sin espacios y en minusculas) para no dejar ninguno afuera
+    const borrado = await Mensaje.deleteMany({
+      $expr: { $eq: [{ $toLower: { $trim: { input: '$email' } } }, emailNormalizado] },
+    });
+
+    if (borrado.deletedCount === 0) {
+      return res.status(404).json({ mensaje: 'No se encontró esa conversación' });
+    }
+
+    res.json({ mensaje: 'Chat eliminado', eliminados: borrado.deletedCount });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al borrar el chat', error: error.message });
   }
 });
 
