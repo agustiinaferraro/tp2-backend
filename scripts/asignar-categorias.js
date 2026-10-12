@@ -1,15 +1,8 @@
-//script para asignar categorias (servicios) a los proyectos de la base
-//los proyectos ahora pueden estar en varias categorias (campo "servicios")
-//uso: node scripts/asignar-categorias.js
-//se corre cuantas veces se necesite: es idempotente (re-escribe la lista por titulo)
-import dotenv from 'dotenv';
+﻿import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import Proyecto from '../models/Proyecto.js';
-
 dotenv.config();
 
-//mapeo por titulo exacto: que categorias le tocan a cada proyecto
-//el primero de la lista queda como categoria principal (campo viejo "servicio")
 const POR_TITULO = {
   'TikTec - Branding': ['diseno-grafico-identidad'],
   'Fight Club - Afiche Tipográfico': ['diseno-grafico-identidad'],
@@ -37,46 +30,35 @@ const POR_TITULO = {
   'TP2': ['desarrollo-full-stack'],
   'TP3': ['desarrollo-full-stack'],
   'Dags': ['desarrollo-full-stack'],
+  'Nubes flotando': ['edicion-de-video', 'motion-graphics'],
+  'Defín nadando': ['edicion-de-video', 'motion-graphics'],
+  'Caminada robótica': ['edicion-de-video', 'motion-graphics'],
 };
-
-async function asignar() {
+async function asignar(){
   await mongoose.connect(process.env.MONGODB_URI);
-
   const proyectos = await Proyecto.find().lean();
   let actualizados = 0;
   let sinMapeo = 0;
-
-  for (const proyecto of proyectos) {
-    const servicios = POR_TITULO[proyecto.titulo];
-    if (!servicios) {
-      //sin mapeo: se conserva la categoria actual (si hay) o queda sin categoria
-      if (proyecto.servicio && !proyecto.servicios?.length) {
-        const lista = [proyecto.servicio];
-        await Proyecto.updateOne({ _id: proyecto._id }, { $set: { servicios: lista } });
+  for(const p of proyectos){
+    const servicios = POR_TITULO[p.titulo];
+    if(!servicios){
+      if(p.servicio && !p.servicios?.length){
+        await Proyecto.updateOne({ _id: p._id }, { $set:{ servicios:[p.servicio] } });
         actualizados++;
       }
       sinMapeo++;
       continue;
     }
-    await Proyecto.updateOne(
-      { _id: proyecto._id },
-      { $set: { servicios, servicio: servicios[0] } }
-    );
+    await Proyecto.updateOne({ _id: p._id }, { $set:{ servicios, servicio: servicios[0] } });
     actualizados++;
   }
-
-  console.log(`proyectos procesados: ${actualizados}`);
-  console.log(`sin mapeo (se conservo lo que tenian): ${sinMapeo}`);
-  for (const proyecto of proyectos) {
-    const servicios = POR_TITULO[proyecto.titulo];
-    console.log(`- ${proyecto.titulo} => ${(servicios ?? [proyecto.servicio ?? '']).join(', ') || 'sin categoria'}`);
+  console.log('proyectos procesados:', actualizados);
+  console.log('sin mapeo (se conservo lo que tenian):', sinMapeo);
+  const check = ['Nubes flotando','Defín nadando','Caminada robótica'];
+  for(const t of check){
+    const pr = await Proyecto.findOne({ titulo:t }).lean();
+    if(pr) console.log('- ' + t + ' => ' + (pr.servicios||[]).join(', '));
   }
-
   await mongoose.disconnect();
 }
-
-asignar().catch(async (error) => {
-  console.error('Error al asignar:', error.message);
-  await mongoose.disconnect();
-  process.exit(1);
-});
+asignar().catch(async(e)=>{console.error('Error al asignar:', e.message);await mongoose.disconnect();process.exit(1);});

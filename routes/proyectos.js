@@ -2,6 +2,7 @@
 //el get es publico (cualquiera ve los proyectos), las modificaciones piden clave de administrador
 import { Router } from 'express';
 import Proyecto from '../models/Proyecto.js';
+import HistorialProyecto from '../models/HistorialProyecto.js';
 import esAdmin from '../middlewares/esAdmin.js';
 
 const router = Router();
@@ -139,11 +140,23 @@ router.delete('/:id', esAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const borrado = await Proyecto.findByIdAndDelete(id);
-
+    const borrado = await Proyecto.findById(id);
     if (!borrado) {
       return res.status(404).json({ mensaje: 'Proyecto no encontrado' });
     }
+
+    //guardar en historial antes de borrar
+    try {
+      await HistorialProyecto.create({
+        tipo: 'eliminar',
+        proyecto: borrado.toObject(),
+        titulo: borrado.titulo,
+      });
+    } catch (e) {
+      //no bloquear borrado si falla historial
+    }
+
+    await Proyecto.findByIdAndDelete(id);
 
     res.json({ mensaje: 'Proyecto borrado' });
   } catch (error) {

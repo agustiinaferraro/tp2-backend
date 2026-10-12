@@ -1,4 +1,4 @@
-//punto de entrada del backend (servidor + api)
+﻿//punto de entrada del backend (servidor + api)
 //funciona en dos ambientes:
 //- local:  node server.js   (arranca con app.listen)
 //- vercel: la app se exporta como funcion serverless
@@ -17,6 +17,7 @@ import perfilRouter from './routes/perfil.js';
 import comentariosRouter from './routes/comentarios.js';
 import usuariosRouter from './routes/usuarios.js';
 import behanceRouter from './routes/behance.js';
+import historialProyectosRouter from './routes/historialProyectos.js';
 
 //se cargan las variables de entorno del archivo .env (solo importa en local)
 dotenv.config();
@@ -48,6 +49,7 @@ app.use('/api/perfil', perfilRouter);
 app.use('/api/comentarios', comentariosRouter);
 app.use('/api/usuarios', usuariosRouter);
 app.use('/api/behance', behanceRouter);
+app.use('/api/historial-proyectos', historialProyectosRouter);
 
 //ruta de prueba para saber que el servidor esta vivo
 app.get('/', (req, res) => {
@@ -67,3 +69,4 @@ if (!process.env.VERCEL) {
 
 //se exporta la app para que vercel pueda ejecutarla como funcion serverless
 export default app;
+
