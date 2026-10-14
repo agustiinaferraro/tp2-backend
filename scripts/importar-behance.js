@@ -73,9 +73,11 @@ async function importar() {
     const existente = await Proyecto.findOne({ link });
     if (existente) {
       const cambios = {};
-      if (existente.titulo !== titulo) cambios.titulo = titulo;
-      if (existente.resumen !== resumen) cambios.resumen = resumen;
-      if (existente.imagen !== imagen) cambios.imagen = imagen;
+      //titulo y resumen solo se actualizan si la dueña no los dejo como propios desde el panel
+      if (!existente.tituloManual && existente.titulo !== titulo) cambios.titulo = titulo;
+      if (!existente.resumenManual && existente.resumen !== resumen) cambios.resumen = resumen;
+      //la portada solo se completa si esta vacia (un reemplazo propio no se pisa)
+      if (!existente.imagen && imagen) cambios.imagen = imagen;
       if (Object.keys(cambios).length) {
         await Proyecto.updateOne({ _id: existente._id }, cambios);
         actualizados++;

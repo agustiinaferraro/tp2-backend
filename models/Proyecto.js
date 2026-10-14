@@ -99,6 +99,16 @@ const proyectoSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    tituloManual: {
+      //true = el titulo lo escribio la dueña desde el panel y el sync de behance no lo pisa
+      type: Boolean,
+      default: false,
+    },
+    resumenManual: {
+      //true = la descripcion la escribio la dueña desde el panel y el sync de behance no la pisa
+      type: Boolean,
+      default: false,
+    },
   },
   {
     //agrega automaticamente "createdat" y "updatedat"

@@ -91,7 +91,19 @@ router.post('/', esAdmin, async (req, res) => {
 router.put('/:id', esAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { titulo, resumen, imagen, imagenes, servicio, servicios, destacado, link, video } = req.body ?? {};
+    const {
+      titulo,
+      resumen,
+      imagen,
+      imagenes,
+      servicio,
+      servicios,
+      destacado,
+      link,
+      video,
+      tituloManual,
+      resumenManual,
+    } = req.body ?? {};
 
     //se arma un objeto solo con los campos que vinieron en la peticion
     const cambios = {};
@@ -100,6 +112,9 @@ router.put('/:id', esAdmin, async (req, res) => {
     if (imagen !== undefined) cambios.imagen = imagen;
     if (link !== undefined) cambios.link = link;
     if (video !== undefined) cambios.video = video;
+    //estos dos marcan el texto como propio: el sync de behance deja de pisarlo
+    if (tituloManual !== undefined) cambios.tituloManual = tituloManual === true;
+    if (resumenManual !== undefined) cambios.resumenManual = resumenManual === true;
     if (imagenes !== undefined) {
       cambios.imagenes = (imagenes ?? []).map((i) => (typeof i === 'string' ? i.trim() : '')).filter(Boolean);
     }
