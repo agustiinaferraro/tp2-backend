@@ -15,7 +15,7 @@ Partí de una estructura clásica de portfolio (inicio, sobre mí, servicios, co
 | Alternativa | Qué probé/consideré | Mi decisión |
 | ----------- | ------------------- | ----------- |
 | Redirigir a Behance en cada tarjeta | Era lo más barato (no cargar nada) | **Descartada.** La consigna pide experiencia e interactividad propias; un portfolio vacío que solo enlaza afuera no comunica nada. Elegí **importar** el contenido de Behance a la base y mostrarlo en la app. |
-| Login en un modal que aparece en la página (candado) | Nav con candado que abría un login | **Descartado por UX**: el modal con scroll era incómodo y no se veía bien en móvil. Lo reemplacé por el candado que **linkea directo a `/admin`** (página dedicada). |
+| Login en un modal que aparece en la página (candado) | Nav con candado que abría un login | **Descartado por UX**: el modal con scroll era incómodo y no se veía bien en mobile. Lo reemplacé por el candado que **linkea directo a `/admin`** (página dedicada). |
 | Ruta dinámica `/proyectos/[id]` para el detalle | Lo natural en un SSR | **Imposible en Astro estático** (no se pueden pregenerar páginas para ids arbitrarios de la base). Lo resolví con `?id=` en la URL + el componente `GrillaProyectos` que decide entre grilla y detalle. |
 | Subir imágenes grandes en base64 | Grababa, pero con imágenes pesadas fallaba | **Rechazado por el límite de tamaño de request de Vercel.** Implementé **compresión en el navegador** (canvas → máx. 1280px, JPG q~0.8, fondo blanco para transparencias) antes de guardar. |
 | Una sola imagen por proyecto | Lo mínimo viable | **Superado:** el detalle pide galería. Agregué `imagenes` (colección), primera = portada, con selector que acepta varias a la vez. |
@@ -84,7 +84,7 @@ Tal como pide la consigna, registro acá el uso de herramientas de IA (asistente
 - La IA no podía prever el límite de request de Vercel ni la restricción del build estático; los detecté probando el deploy real.
 - Algunas soluciones que propuso las descarté por no ajustarse a la identidad o al alcance elegido.
 
-**Decisiones que tomé yo (no la IA)**
+**Decisiones de diseño y arquitectura**
 - La identidad visual (tema oscuro + violeta en los botones y verde en los detalles de texto) y el tono de los textos.
 - Qué cuenta (mi email) es la única que puede entrar al panel.
 - Preferir la página `/admin` dedicada al login modal.
