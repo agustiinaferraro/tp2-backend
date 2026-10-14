@@ -26,13 +26,14 @@ Partí de una estructura clásica de portfolio (inicio, sobre mí, servicios, co
 1. **Base:** site Astro + Tailwind con secciones estáticas; primer backend básico conectado a MongoDB Atlas.
 2. **Proyectos dinámicos:** endpoint público + grilla React que consume la API; estados de carga/error/vacío; buscador.
 3. **Admin real:** panel en `/admin` con usuario y clave en variables de entorno; alta/edición/borrado; subida de imágenes con compresión; bandeja de mensajes del formulario de contacto.
-4. **Detalle tipo Behance:** click en una tarjeta → vista en grande del proyecto; si estoy logueada como dueña, botón "Editar" en el mismo detalle.
+4. **Detalle tipo Behance:** click en una tarjeta → vista en grande del proyecto, con **galería completa, video, descripción, estadísticas y fecha de publicación sincronizadas desde Behance** (el visitante ve el proyecto entero sin salir del sitio); si estoy logueada como dueña, botón "Editar" en el mismo detalle.
 5. **Categorías:** selector de servicio en el panel, páginas por servicio, chips de filtro en la grilla y posibilidad de **crear categorías nuevas** desde el modo admin.
 6. **Galería:** varias imágenes por proyecto con miniaturas en el detalle.
 7. **Contenido:** importación desde el feed RSS de Behance para poblar la base sin carga manual (y desde la API de Vercel para los trabajos de programación). Hoy la base tiene **57 proyectos**.
 8. **Sesión con Firebase:** el panel dejó de usar "usuario y clave" y pasó a abrirse solo con mi **cuenta de dueña** (token validado en el backend). Sumé el perfil público (`/perfil`) con cuentas múltiples guardadas, **cambio de cuenta** desde el panel y eliminación de cuenta.
 9. **Historial y restauración:** cada alta, edición o borrado de proyecto queda registrado en `historialproyectos`; lo eliminado se puede **restaurar en un click** desde el panel (idempotente: no duplica proyectos existentes).
 10. **Refinamientos de UX:** botón de volver responsive en el detalle, `/perfil` abre directo el panel cuando la sesión es la mía, y corrección de una carrera de sesión al cambiar de cuenta (cierro Firebase *antes* de navegar para que no resucite la cuenta anterior).
+11. **Detalle sincronizado con Behance:** el script de importación ahora también **raspa cada galería** (imágenes completas en el orden original, video embebido, descripción completa, vistas/apreciaciones/comentarios, fecha de publicación y palabras clave) y lo guarda cacheado en Mongo. Corre cada 6 horas por GitHub Actions, con **tope de 15 galerías por corrida** y refresco máximo diario por proyecto (pausas de 2 segundos entre galerías para no molestar a Behance). Así el detalle del sitio es idéntico al de Behance sin depender de Behance en runtime; si una galería fue retirada, se detecta y no se vuelve a raspar.
 
 La decisión de identidad la sostuve desde el inicio: **tema oscuro** (zinc-950) con **violeta (#B884E7) solo en los botones** y **verde (#69F5CC) en los detalles de texto**, tipografía limpia, microanimaciones de hover y una marca gráfica consistente (logo circular, "Contactate", FAB "¡Hablemos!").
 
@@ -42,7 +43,7 @@ La decisión de identidad la sostuve desde el inicio: **tema oscuro** (zinc-950)
 - **API:** testeié los endpoints con `curl` en local y en producción: crear/editar/borrar proyectos, filtrar por `?servicio=` y `?destacados=`, detalle por id, crear categorías, y permisos (token de la dueña → 200; sin token o de otra cuenta → 401).
 - **Límites:** probé el guardado de imágenes en pesos límite (cerca de 0.5 MB y más pesadas) para calibrar la compresión y el mensaje de error amigable.
 - **Estados:** verifiqué el estado vacío (sin proyectos cargados), error (API apagada) y carga.
-- **Script de importación:** lo corrí contra la base real: los proyectos de Behance y de Vercel se importaron y la re-ejecución no duplica (dedupe por link). Hoy la base tiene 57 proyectos (42 esperados de Behance + 15 de Vercel; los links los reparé uno por uno hasta que los 41 de Behance en la base responden 200).
+- **Script de importación:** lo corrí contra la base real: los proyectos de Behance y de Vercel se importaron y la re-ejecución no duplica (dedupe por link). Hoy la base tiene 57 proyectos (42 esperados de Behance + 15 de Vercel; los links los reparé uno por uno hasta que los 41 de Behance en la base responden 200). Probé además la extracción de detalle contra galerías reales (imágenes, video, descripción, stats y fecha) y corrí el backfill completo: **41 proyectos con detalle**; la única galería sin detalle es una que Behance retiró (takedown), que queda marcada para no reintentar en cada corrida.
 
 ## Dificultades técnicas y cómo las resolví
 
@@ -55,7 +56,7 @@ La decisión de identidad la sostuve desde el inicio: **tema oscuro** (zinc-950)
 
 ## Estado pendiente o mejorable (reconocido)
 
-- Las **miniaturas importadas de Behance** son las que publica el feed (resolución media): para gran calidad se reemplazan desde el panel admin (imágenes propias a máx. 1280px).
+- Las **portadas** importadas de Behance son las que publica el feed (resolución media); la **galería completa del detalle** sí se sincroniza en alta desde las galerías. Para mejorar la portada se reemplaza desde el panel admin (imagen propia a máx. 1280px).
 - Las **categorías nuevas** creadas desde el admin no tienen página propia hasta agregarlas a `tp2-frontend/src/data/servicios.js` y redesplegar.
 - **Paginación** en la grilla cuando haya muchos proyectos.
 - Guardar imágenes en un **CDN** (URLs) en lugar de base64 para alivianar la base.

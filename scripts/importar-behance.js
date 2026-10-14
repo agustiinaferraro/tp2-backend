@@ -1,10 +1,13 @@
 //script de importacion de proyectos desde el feed rss de behance
 //se corre una sola vez (o varias, porque no repite proyectos) para poblar la base sin cargar a mano
 //tambien actualiza titulo/resumen/imagen de proyectos que ya existan por link (si cambiaron en behance)
+//ademas refresca el detalle de las galerias (imagenes completas, video, descripcion, stats,
+//fecha y keywords): es el script del github action, que corre cada 6 horas sin limite de tiempo
 //uso: node scripts/importar-behance.js
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import Proyecto from '../models/Proyecto.js';
+import { importarDetalles } from '../routes/behance.js';
 
 dotenv.config();
 
@@ -102,6 +105,15 @@ async function importar() {
   for (const p of importados) {
     console.log(`- ${p.titulo} | ${p.link}`);
   }
+
+  //detalle de las galerias pendientes (imagenes, video, descripcion, stats, fecha y keywords);
+  //cada proyecto se refresca como maximo 1 vez por dia y por corrida se tocan hasta 15
+  const detalles = await importarDetalles();
+  console.log(
+    `detalle de galerias: ${detalles.sincronizados} sincronizados de ${detalles.pendientes} pendientes` +
+      ` (${detalles.fallidos} sin poder entrar, ${detalles.sinGaleria} sin galeria en behance,` +
+      ` ${detalles.imagenes} imagenes guardadas)`
+  );
 
   await mongoose.disconnect();
 }

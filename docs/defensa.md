@@ -19,7 +19,7 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
 | ¿Por qué una API separada + MongoDB? | Para que el contenido sea **dinámico y administrable** sin tocar el código: entro al panel, edito un proyecto y la web cambia sola. La consigna pide API externa o fuente dinámica; ahí está mi fuente dinámica (y además importo del feed RSS de Behance como fuente externa). |
 | ¿Por qué `?id=` para el detalle y no una ruta `/proyectos/[id]`? | Porque el sitio es **estático**: Astro no puede pregenerar rutas para ids que vienen de la base en runtime. Con `?id=` el mismo HTML de `/proyectos` resuelve el detalle con un componente React y sincronizo el historial del navegador (funciona el botón "atrás"). |
 | ¿Cómo manejo el peso de las imágenes? | Las imágenes viajan en base64 en MongoDB. Vercel limita el tamaño del request, así que **comprimo en el navegador** (canvas: máx. 1280px, JPG ~0.8, fondo blanco) antes de guardar, y aviso si la galería excede el límite. |
-| ¿Por qué no redirigir a Behance? | Porque la web dejaría de comunicar algo propio y perdería la interacción. En su lugar **importo** los proyectos de mi feed de Behance a la base (script) y los muestro acá, con detalle propio. Behance queda solo como link externo "Ver en Behance". |
+| ¿Por qué no redirigir a Behance? | Porque la web dejaría de comunicar algo propio y perdería la interacción. En su lugar **importo** los proyectos de mi feed de Behance a la base (script) y los muestro acá, con detalle propio: **galería completa, video, descripción, estadísticas y fecha**, sincronizados desde cada galería y cacheados en Mongo. Behance queda solo como link externo "Ver proyecto completo". |
 | ¿Qué interacción significativa hay? | Varias: el **buscador** filtra en vivo; los **chips de categoría** modifican qué proyectos se ven; el **detalle tipo Behance** navega la galería por miniaturas; desde el **panel admin** modifico el contenido real de la web. |
 | ¿Qué estados manejo? | Carga (spinner/texto), error (API caída → mensaje), vacío ("no hay proyectos"), contenido disponible, sesión (logueada/cerrada), confirmación antes de borrar. |
 
@@ -34,7 +34,7 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
   - `styles/global.css` — estilos globales y ajustes de accesibilidad.
 - **`tp2-backend/`**
   - `server.js` — arranque. `routes/` — endpoints (`proyectos`, `servicios`, `mensajes`, `comentarios`, `historial-proyectos`, `admin`, `perfil`, `usuarios`). `models/` — esquemas.
-  - `scripts/importar-behance.js` — importa proyectos desde el RSS de Behance.
+  - `scripts/importar-behance.js` — importa proyectos desde el RSS de Behance y sincroniza el detalle de cada galería (imágenes completas, video, descripción, estadísticas, fecha y keywords) con tope de 15 por corrida.
   - `.env` — `MONGODB_URI`, `ADMIN_EMAIL` y las credenciales de firebase admin (no se sube al repo).
 
 **Ejercicios de modificación en vivo** (practicá estos):
@@ -51,9 +51,9 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
 - **"¿Qué pasa si la API se cae?"** → Mis componentes muestran "Verificá que el backend esté corriendo" (estado de error). El sitio estático sigue funcionando; solo las secciones dinámicas avisan que no hay datos.
 - **"¿Por qué MongoDB y no otro?"** → Es un servicio administrado en la nube (Atlas, plan gratis), fácil de conectar con Mongoose y con el deploy en Vercel.
 - **"¿Cómo está protegido el admin?"** → Mi panel solo se abre con **mi cuenta de Firebase**: cada operación de escritura pasa por el middleware `esAdmin`, que valida el token (`Authorization: Bearer`) y comprueba que el email sea el mío (`ADMIN_EMAIL`). Lo puede consultar con `GET /api/admin/soy-dueno`. No guardo contraseñas en el navegador: el token vive en la sesión y expira solo.
-- **"¿Qué pasaría si Behance cambia su feed?"** → La web no depende de Behance en runtime: el feed lo uso solo en el script de importación. Si cambia, vuelvo a correr el import (o edito desde el panel).
+- **"¿Qué pasaría si Behance cambia su feed?"** → La web no depende de Behance en runtime: los proyectos y su detalle viven cacheados en Mongo y solo se refrescan en el sync (cada 6 horas por GitHub Actions). Si cambia el formato, se ve en el log del sync (los proyectos fallidos no se marcan y se reintentan) y ajusto el scraper; mientras tanto el sitio sigue mostrando lo último sincronizado.
 - **"¿Cómo se maneja el 'vacío'?"** → Cada lista muestra un mensaje específico (grilla: "Todavía no hay proyectos…"; servicio sin proyectos: texto propio; buscador: "sin resultados").
-- **"¿Cuáles son las limitaciones?"** → Miniaturas de Behance en calidad media (se reemplazan por imágenes propias), categorías nuevas sin página hasta el redeploy, base64 en la base (a futuro CDN), sin paginación aún.
+- **"¿Cuáles son las limitaciones?"** → Portadas de Behance en calidad media del feed (la galería completa del detalle sí se sincroniza en alta; la portada se puede reemplazar con imagen propia), categorías nuevas sin página hasta el redeploy, base64 en la base (a futuro CDN), sin paginación aún.
 
 ## 5. Antes de cerrar
 

@@ -61,6 +61,44 @@ const proyectoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    imagenesBehance: {
+      //galeria completa del proyecto tal como behance la publica (solo proyectos de behance)
+      //se sincroniza desde la galeria; van en el orden original de los modulos de behance
+      type: [String],
+      default: [],
+    },
+    descripcionCompleta: {
+      //descripcion completa de behance (el resumen del rss viene corto o con el "..." del feed)
+      type: String,
+      default: '',
+    },
+    palabrasClave: {
+      //keywords que behance muestra en la ficha del proyecto (meta keywords de la galeria)
+      type: [String],
+      default: [],
+    },
+    estadisticas: {
+      //vistas, apreciaciones y comentarios que behance registra en el proyecto
+      //null hasta que se sincroniza el detalle (los proyectos propios no tienen)
+      //_id: false para que mongo no le agregue un id interno al objeto
+      type: {
+        _id: false,
+        vistas: { type: Number, default: 0 },
+        apreciaciones: { type: Number, default: 0 },
+        comentarios: { type: Number, default: 0 },
+      },
+      default: null,
+    },
+    publicadoEn: {
+      //fecha de publicacion del proyecto en behance (la que behance muestra en la ficha)
+      type: Date,
+      default: null,
+    },
+    sincronizadoDetalleEn: {
+      //cuando se scrapeo por ultima vez la galeria completa (para refrescar como maximo 1 vez por dia)
+      type: Date,
+      default: null,
+    },
   },
   {
     //agrega automaticamente "createdat" y "updatedat"
