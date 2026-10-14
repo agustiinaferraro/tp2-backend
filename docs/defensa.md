@@ -8,7 +8,7 @@ Preparación para la instancia de **Examen Final — Programación Multimedial I
 
 1. **Qué es:** un portfolio personal que presenta a Agustina como diseñadora multimedia y desarrolladora full stack.
 2. **La idea:** una web con identidad propia (oscuro, violeta en los botones, verde en los detalles de texto) que además demuestra un recorrido técnico completo: sitio estático con Astro, componentes React interactivos, una API REST propia y una base MongoDB.
-3. **El recorrido del visitante:** inicio (conocés quién soy y qué destaco) → sobre mí → proyectos (dinámicos, filtrables, con detalle tipo Behance) → servicios (páginas propias por categoría) → contacto (formulario que guarda en la base). Y al final del todo, el panel `/admin` con clave: la persona puede gestionar TODO el contenido.
+3. **El recorrido del visitante:** inicio (conocés quién soy y qué destaco) → sobre mí → proyectos (dinámicos, filtrables, con detalle tipo Behance) → servicios (páginas propias por categoría) → contacto (formulario que guarda en la base). Y el panel `/admin`, que se abre **solo cuando la sesión es la de la dueña** (cuenta de Firebase, token validado en el backend): desde ahí se gestiona TODO el contenido, incluido el **historial de proyectos con restauración**.
 4. **Decisión clave de arquitectura:** el sitio es estático (Astro) y la interactividad viene de consumir mi propia API (`agustinaportfolio-api.vercel.app`), que lee MongoDB Atlas. Cada push a `main` redespliega frontend y backend en Vercel.
 
 ## 2. Justificar decisiones (para tener a mano)
@@ -28,7 +28,7 @@ Preparación para la instancia de **Examen Final — Programación Multimedial I
 - **`frontend/src/`**
   - `pages/*.astro` — cada página (index, sobre-mi, proyectos, servicios, contacto, admin).
   - `layouts/Layout.astro` — HTML común (head, título, skip-link).
-  - `components/*.jsx` — los islands React: `Buscador`, `GrillaProyectos`, `ProyectoDetalle`, `SelectorImagenes`, `AdminProyectos`, `ServicioDetalle`, `Contacto`.
+  - `components/*.jsx` — los islands React: `Buscador`, `GrillaProyectos`, `ProyectoDetalle`, `SelectorImagenes`, `AdminProyectos`, `HistorialProyectos`, `CuentaUsuario`, `Comentarios`, `AdminMensajes`, `ServicioDetalle`, `Contacto`.
   - `data/servicios.js` — los 5 servicios con sus páginas (si creás categorías nuevas, se agregan acá).
   - `api/*.js` — funciones que llaman al backend (fetch).
   - `styles/global.css` — estilos globales y ajustes de accesibilidad.
@@ -43,6 +43,7 @@ Preparación para la instancia de **Examen Final — Programación Multimedial I
 3. **Agregar un servicio/página:** sumá una entrada con slug en `frontend/src/data/servicios.js` → se genera la ruta en el build.
 4. **Cambiar qué se ve en la home:** en el panel `/admin`, editá un proyecto y tildá "Destacado en la portada".
 5. **Agregar un proyecto:** entrá a `/admin` con tu cuenta de dueña (el panel se abre solo si esa cuenta es la de la dueña) y cargá un proyecto con imagen; la grilla y el detalle lo muestran al instante.
+6. **Restaurar algo borrado:** en el panel → *Historial*, tocá **Restaurar** en una entrada de borrado; el proyecto vuelve a la grilla al toque (y si ya existe, avisa en vez de duplicar).
 
 ## 4. Preguntas difíciles típicas (para no quedarse en blanco)
 

@@ -29,7 +29,10 @@ Se partió de una estructura clásica de portfolio (inicio, sobre mí, servicios
 4. **Detalle tipo Behance:** click en una tarjeta → vista en grande del proyecto; si sos admin, botón "Editar" en el mismo detalle (con login si no hay sesión).
 5. **Categorías:** selector de servicio en el panel, páginas por servicio, chips de filtro en la grilla y posibilidad de **crear categorías nuevas** desde el modo admin.
 6. **Galería:** varias imágenes por proyecto con miniaturas en el detalle.
-7. **Contenido:** importación desde el feed RSS de Behance para poblar la base sin carga manual.
+7. **Contenido:** importación desde el feed RSS de Behance para poblar la base sin carga manual (y desde la API de Vercel para los trabajos de programación). Hoy la base tiene **57 proyectos**.
+8. **Sesión con Firebase:** el panel dejó de usar "usuario y clave" y pasó a abrirse solo con la **cuenta de la dueña** (token validado en el backend). Se sumó el perfil público (`/perfil`) con cuentas múltiples guardadas, **cambio de cuenta** desde el panel y eliminación de cuenta.
+9. **Historial y restauración:** cada alta, edición o borrado de proyecto queda registrado en `historialproyectos`; lo eliminado se puede **restaurar en un click** desde el panel (idempotente: no duplica proyectos existentes).
+10. **Refinamientos de UX:** botón de volver responsive en el detalle, `/perfil` abre directo el panel cuando la sesión es la de la dueña, y corrección de una carrera de sesión al cambiar de cuenta (se cierra Firebase *antes* de navegar para que no resucite la cuenta anterior).
 
 Decisión de identidad sostenida desde el inicio: **tema oscuro** (zinc-950) con **violeta (#B884E7) solo en los botones** y **verde (#69F5CC) en los detalles de texto**, tipografía limpia, microanimaciones de hover y una marca gráfica consistente (logo circular, "Contactate", FAB "¡Hablemos!").
 
@@ -39,7 +42,7 @@ Decisión de identidad sostenida desde el inicio: **tema oscuro** (zinc-950) con
 - **API:** se testearon los endpoints con `curl` en local y en producción: crear/editar/borrar proyectos, filtrar por `?servicio=` y `?destacados=`, detalle por id, crear categorías, verificación de clave (clave correcta → 200, clave vieja → 401).
 - **Límites:** se probó el guardado de imágenes en pesos límite (cerca de 0.5 MB y más pesadas) para calibrar la compresión y el mensaje de error amigable.
 - **Estados:** se verificó el estado vacío (sin proyectos cargados), error (API apagada) y carga.
-- **Script de importación:** se ejecutó contra la base real: 12 proyectos importados desde Behance, re-ejecución no duplica (dedupe por link).
+- **Script de importación:** se ejecutó contra la base real: los proyectos de Behance y de Vercel se importaron y la re-ejecución no duplica (dedupe por link). Hoy la base tiene 57 proyectos (42 esperados de Behance + 15 de Vercel; los links se repararon uno por uno hasta que los 41 de Behance en la base responden 200).
 
 ## Dificultades técnicas y cómo se resolvieron
 
@@ -69,8 +72,8 @@ Decisión de identidad sostenida desde el inicio: **tema oscuro** (zinc-950) con
 Tal como pide la consigna, se registra el uso de herramientas de IA (asistente de programación **opencode**) durante el proceso:
 
 **Para qué se utilizó**
-- Implementar features completos (panel admin, detalle tipo Behance, galería de imágenes, filtros por categoría, buscador, importación desde Behance).
-- Diagnosticar y resolver errores (límite de request de Vercel, `window` en build estático, tests con `curl`/PowerShell, problemas de encoding).
+- Implementar features completos (panel admin, detalle tipo Behance, galería de imágenes, filtros por categoría, buscador, importación desde Behance, historial con restauración, cambio de cuenta multi-sesión).
+- Diagnosticar y resolver errores (límite de request de Vercel, `window` en build estático, tests con `curl`/PowerShell, problemas de encoding, carreras de sesión al cambiar de cuenta).
 - Redactar esta documentación y el guía de defensa.
 
 **Qué partes se revisaron, adaptaron o descartaron**
@@ -83,7 +86,7 @@ Tal como pide la consigna, se registra el uso de herramientas de IA (asistente d
 
 **Decisiones tomadas por la autora (no por la IA)**
 - La identidad visual (tema oscuro + violeta en los botones y verde en los detalles de texto) y el tono de los textos.
-- Elegir usuario y clave del panel.
+- Elegir qué cuenta (email de la dueña) es la única que puede entrar al panel.
 - Preferir la página `/admin` dedicada al login modal.
 - Elegir "importar desde Behance y mostrar en la app" en lugar de redirigir.
 - Qué proyectos destacar y qué servicios incluir.

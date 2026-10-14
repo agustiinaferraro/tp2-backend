@@ -14,7 +14,7 @@ API REST del portfolio construida con **Node.js + Express + Mongoose**, conectad
 ├── package.json
 ├── .env.example       # Plantilla de variables de entorno (copiá a .env)
 ├── config/            # Conexión a MongoDB
-├── models/            # Modelos de datos (proyectos, mensajes, servicios...)
+├── models/            # Modelos de datos (proyectos, mensajes, servicios, historial...)
 └── routes/            # Rutas/endpoints de la API
 └── scripts/           # Scripts utilitarios (importación desde Behance y Vercel)
 ```
