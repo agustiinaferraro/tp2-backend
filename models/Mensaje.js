@@ -26,6 +26,17 @@ const mensajeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    telefono: {
+      //whatsapp de la persona (formato internacional, ej. "54911..."): si lo deja,
+      //la admin puede responderle por whatsapp desde el panel
+      type: String,
+      default: '',
+    },
+    porWhatsapp: {
+      //marca las respuestas que la admin mando por whatsapp (el visitante lo ve en su chat)
+      type: Boolean,
+      default: false,
+    },
     token: {
       //clave secreta de la conversacion: la usa el visitante para ver su propio chat
       type: String,

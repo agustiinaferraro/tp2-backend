@@ -35,6 +35,8 @@ router.get('/conversaciones', esAdmin, async (req, res) => {
           email: { $first: { $toLower: { $trim: { input: '$email' } } } },
           //la cantidad cuenta solo los mensajes de la persona, no las respuestas del admin
           cantidad: { $sum: { $cond: [{ $ifNull: ['$esRespuesta', false] }, 0, 1] } },
+          //whatsapp de la persona: se queda con el no vacio de la conversacion
+          telefono: { $max: '$telefono' },
           ultimaFecha: { $first: '$createdAt' },
           mensajes: { $push: '$$ROOT' },
         },
@@ -100,7 +102,7 @@ router.get('/publico/:email', async (req, res) => {
 router.post('/conversaciones/:email/respuesta', esAdmin, async (req, res) => {
   try {
     const { email } = req.params;
-    const { respuesta, nombre } = req.body ?? {};
+    const { respuesta, nombre, porWhatsapp } = req.body ?? {};
 
     if (!respuesta || !String(respuesta).trim()) {
       return res.status(400).json({ mensaje: 'La respuesta no puede estar vacía' });
@@ -126,6 +128,7 @@ router.post('/conversaciones/:email/respuesta', esAdmin, async (req, res) => {
       email: emailNormalizado,
       mensaje: String(respuesta).trim(),
       esRespuesta: true,
+      porWhatsapp: porWhatsapp === true,
       token,
     });
 
@@ -137,10 +140,11 @@ router.post('/conversaciones/:email/respuesta', esAdmin, async (req, res) => {
 
 //post a /api/mensajes (visitante logueado)
 //recibe un mensaje de contacto y lo guarda en la base
-//exige estar logueado: el nombre y el email salen del token de sesion (firebase los verifica)
+//exige estar logueado: el nombre y el email salen del token de sesion (firebase verifica)
+//si la persona dejo su whatsapp (en el cuerpo o en un mensaje anterior) queda guardado aca
 router.post('/', esAutenticado, async (req, res) => {
   try {
-    const { mensaje } = req.body ?? {};
+    const { mensaje, telefono } = req.body ?? {};
     const { email, nombre } = req.usuario;
 
     //validacion: el mensaje no puede estar vacio
@@ -156,16 +160,48 @@ router.post('/', esAutenticado, async (req, res) => {
       return res.status(400).json({ mensaje: 'El email no es válido. Registrate con un email real.' });
     }
 
+    //el whatsapp puede venir en este mensaje o de un mensaje anterior de la misma persona
+    let whatsappGuardado = String(telefono ?? '').trim();
+    if (!whatsappGuardado) {
+      const anterior = await Mensaje.findOne({ email: emailNormalizado, telefono: { $ne: '' } })
+        .sort({ createdAt: -1 })
+        .lean();
+      whatsappGuardado = anterior?.telefono ?? '';
+    }
+
     const nuevoMensaje = await Mensaje.create({
       nombre: String(nombre).trim() || emailNormalizado,
       email: emailNormalizado,
       mensaje: String(mensaje).trim(),
+      telefono: whatsappGuardado,
       token: '',
     });
 
     res.status(201).json({ mensaje: 'Mensaje recibido', datos: nuevoMensaje.toObject() });
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al guardar el mensaje', error: error.message });
+  }
+});
+
+//post a /api/mensajes/telefono (visitante logueado)
+//guarda el whatsapp de la persona en toda su conversacion: despues la admin puede
+//responderle por whatsapp desde el panel
+router.post('/telefono', esAutenticado, async (req, res) => {
+  try {
+    const { telefono } = req.body ?? {};
+    const { email } = req.usuario;
+    const numero = String(telefono ?? '').replace(/[\s()-]/g, '');
+
+    if (!/^\+?\d{6,15}$/.test(numero)) {
+      return res.status(400).json({ mensaje: 'El número de WhatsApp no es válido (usá el formato con código de país, ej: 5491131166948).' });
+    }
+
+    const emailNormalizado = String(email).trim().toLowerCase();
+    await Mensaje.updateMany({ email: emailNormalizado }, { telefono: numero });
+
+    res.json({ mensaje: 'WhatsApp guardado', telefono: numero });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al guardar el WhatsApp', error: error.message });
   }
 });
 
