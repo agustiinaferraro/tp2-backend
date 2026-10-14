@@ -1,10 +1,10 @@
 //script para cargar (o actualizar) los servicios en mongodb
-//uso: node seedServicios.js
+//uso: node scripts/seedServicios.js
 //es una herramienta de desarrollo: se ejecuta una vez y listo
 
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import Servicio from './models/Servicio.js';
+import Servicio from '../models/Servicio.js';
 
 dotenv.config();
 
