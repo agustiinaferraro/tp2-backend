@@ -29,7 +29,7 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
   - `pages/*.astro` — cada página (index, sobre-mi, proyectos, servicios, contacto, perfil, admin).
   - `layouts/Layout.astro` — HTML común (head, título, skip-link).
   - `components/*.jsx` — mis islands React: `Buscador`, `GrillaProyectos`, `ProyectoDetalle`, `SelectorImagenes`, `AdminProyectos`, `HistorialProyectos`, `CuentaUsuario`, `Comentarios`, `AdminMensajes`, `ServicioDetalle`, `Contacto`.
-  - `data/servicios.js` — los 5 servicios con sus páginas (si creo categorías nuevas, las agrego acá).
+  - `data/servicios-respaldo.js` — respaldo estático (slug + nombre) que el build usa para generar las páginas de los 5 servicios base; la fuente real de los textos es la API (editable desde el panel).
   - `api/*.js` — funciones que llaman al backend (fetch).
   - `styles/global.css` — estilos globales y ajustes de accesibilidad.
 - **`tp2-backend/`**
@@ -41,7 +41,7 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
 
 1. **Cambiar un color de identidad:** en `tp2-frontend/src/styles/global.css` (o en el componente) cambio el acento `#a78bfa` o en `Layout.astro` el `bg-zinc-950`.
 2. **Cambiar un texto:** edito un párrafo en `tp2-frontend/src/pages/sobre-mi.astro` o `index.astro`.
-3. **Agregar un servicio/página:** sumo una entrada con slug en `tp2-frontend/src/data/servicios.js` → se genera la ruta en el build.
+3. **Agregar un servicio/página:** creo la categoría desde el panel (selector de categorías → "Crear categoría nueva"); su página propia se suma agregando el slug en `tp2-frontend/src/data/servicios-respaldo.js` + redeploy. **Editar** nombre, descripción y "qué incluye" de un servicio existente lo hago desde la vista *Servicios* del panel, al instante.
 4. **Cambiar qué se ve en la home:** en el panel `/admin`, edito un proyecto y tildo "Destacado en la portada".
 5. **Agregar un proyecto:** entro a `/admin` con mi cuenta de dueña (el panel se abre solo si esa cuenta es la mía) y cargo un proyecto con imagen; la grilla y el detalle lo muestran al instante.
 6. **Restaurar algo borrado:** en el panel → *Historial*, toco **Restaurar** en una entrada de borrado; el proyecto vuelve a la grilla al toque (y si ya existe, aviso en vez de duplicar).
@@ -52,7 +52,9 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
 - **"¿Por qué MongoDB y no otro?"** → Es un servicio administrado en la nube (Atlas, plan gratis), fácil de conectar con Mongoose y con el deploy en Vercel.
 - **"¿Cómo está protegido el admin?"** → Mi panel solo se abre con **mi cuenta de Firebase**: cada operación de escritura pasa por el middleware `esAdmin`, que valida el token (`Authorization: Bearer`) y comprueba que el email sea el mío (`ADMIN_EMAIL`). Lo puede consultar con `GET /api/admin/soy-dueno`. No guardo contraseñas en el navegador: el token vive en la sesión y expira solo.
 - **"¿Qué pasaría si Behance cambia su feed?"** → La web no depende de Behance en runtime: los proyectos y su detalle viven cacheados en Mongo y solo se refrescan en el sync (cada 6 horas por GitHub Actions). Si cambia el formato, se ve en el log del sync (los proyectos fallidos no se marcan y se reintentan) y ajusto el scraper; mientras tanto el sitio sigue mostrando lo último sincronizado.
-- **"¿Y si edito un texto desde el panel, Behance me lo pisa?"** → No: por defecto Behance manda (título y descripción se actualizan solos), pero en cuanto edito ese texto desde el panel queda **marcado como propio** y el sync deja de tocarlo. En el editor hay un checkbox por campo para devolverle el control a Behance (en la próxima sincronización).
+- **"¿Y si edito un texto desde el panel, Behance me lo pisa?"** → No: por defecto Behance manda (título y descripción se actualizan solos), pero en cuanto edito ese texto desde el panel queda **marcado como propio** y el sync deja de tocarlo. En el editor hay un checkbox por campo para devolverle el control a Behance (en la próxima sincronización). El campo **"Qué aprendí"** es siempre mío: Behance no lo sincroniza.
+- **"Los detalles son solo una foto y un enlace"** → Ya no: el detalle es tipo Behance con la **galería completa, video embebido, descripción, estadísticas y fecha** sincronizadas cada 6 horas; el enlace externo queda como complemento. Y sumé la sección **"Qué aprendí"**, que escribo yo desde el panel proyecto por proyecto (punto del feedback: reflejar el aprendizaje, no un listado de herramientas).
+- **"¿Y la sección de Servicios?"** → Cada página de servicio se completa desde la vista *Servicios* del panel: descripción y lista **"Qué incluye"** (se muestra con ✓). Los cambios se publican al instante, sin redesplegar.
 - **"¿El usuario final ve la URL de la API?"** → No: en producción el navegador llama a `/api` en el **mismo dominio del sitio** y un rewrite de Vercel (en `vercel.json` del frontend) enruta ese `/api` al backend por atrás. La URL de la API no aparece en el código del cliente ni en la red del visitante. (Es una buena práctica que me señaló el profesor; no era requisito de la consigna.) En local uso `PUBLIC_API_URL` para apuntar al backend, y en el build sirve para los fetchs del sitio estático.
 - **"¿Cómo se maneja el 'vacío'?"** → Cada lista muestra un mensaje específico (grilla: "Todavía no hay proyectos…"; servicio sin proyectos: texto propio; buscador: "sin resultados").
 - **"¿Cuáles son las limitaciones?"** → Portadas de Behance en calidad media del feed (la galería completa del detalle sí se sincroniza en alta; la portada se puede reemplazar con imagen propia), categorías nuevas sin página hasta el redeploy, base64 en la base (a futuro CDN), sin paginación aún.

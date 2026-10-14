@@ -109,6 +109,12 @@ const proyectoSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    aprendizajes: {
+      //texto propio: que aprendio la dueña con este proyecto (lo que el profe pide "reflejar")
+      //lo escribe desde el panel; el sync de behance nunca lo toca porque no existe alla
+      type: String,
+      default: '',
+    },
   },
   {
     //agrega automaticamente "createdat" y "updatedat"

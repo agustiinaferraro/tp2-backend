@@ -69,4 +69,39 @@ router.get('/:slug', async (req, res) => {
   }
 });
 
+//put a /api/servicios/:slug (solo admin)
+//edita un servicio existente desde el panel (nombre, descripcion y "que incluye")
+//el slug no se toca: es la url y los proyectos ya la usan como referencia
+router.put('/:slug', esAdmin, async (req, res) => {
+  try {
+    const { nombre, descripcion, incluye } = req.body ?? {};
+    const cambios = {};
+
+    if (nombre !== undefined) {
+      if (!String(nombre).trim()) {
+        return res.status(400).json({ mensaje: 'El nombre del servicio no puede quedar vacío' });
+      }
+      cambios.nombre = String(nombre).trim();
+    }
+    if (descripcion !== undefined) cambios.descripcion = String(descripcion).trim();
+    if (incluye !== undefined) {
+      //una lista de strings; lo que venga vacio o sin forma se descarta
+      cambios.incluye = Array.isArray(incluye)
+        ? incluye.map((i) => String(i).trim()).filter(Boolean)
+        : [];
+    }
+
+    const actualizado = await Servicio.findOneAndUpdate({ slug: req.params.slug }, cambios, {
+      new: true,
+      runValidators: true,
+    });
+    if (!actualizado) {
+      return res.status(404).json({ mensaje: 'Servicio no encontrado' });
+    }
+    res.json({ mensaje: 'Servicio actualizado', datos: actualizado });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al actualizar el servicio', error: error.message });
+  }
+});
+
 export default router;

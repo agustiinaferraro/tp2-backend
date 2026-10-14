@@ -103,6 +103,7 @@ router.put('/:id', esAdmin, async (req, res) => {
       video,
       tituloManual,
       resumenManual,
+      aprendizajes,
     } = req.body ?? {};
 
     //se arma un objeto solo con los campos que vinieron en la peticion
@@ -112,6 +113,10 @@ router.put('/:id', esAdmin, async (req, res) => {
     if (imagen !== undefined) cambios.imagen = imagen;
     if (link !== undefined) cambios.link = link;
     if (video !== undefined) cambios.video = video;
+    //este campo es solo texto tuyo: no lo sincroniza behance ni nadie mas
+    if (aprendizajes !== undefined) {
+      cambios.aprendizajes = typeof aprendizajes === 'string' ? aprendizajes.trim() : '';
+    }
     //estos dos marcan el texto como propio: el sync de behance deja de pisarlo
     if (tituloManual !== undefined) cambios.tituloManual = tituloManual === true;
     if (resumenManual !== undefined) cambios.resumenManual = resumenManual === true;

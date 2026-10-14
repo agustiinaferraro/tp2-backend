@@ -20,6 +20,12 @@ const servicioSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
+    incluye: {
+      //lista corta de que incluye el servicio (ej: ["wireframes", "prototipo interactivo"])
+      //se escribe desde el panel y se muestra en la pagina publica del servicio
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
