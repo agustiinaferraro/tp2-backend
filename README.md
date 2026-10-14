@@ -13,10 +13,12 @@ API REST del portfolio construida con **Node.js + Express + Mongoose**, conectad
 ├── server.js          # Punto de entrada: config y arranque del servidor
 ├── package.json
 ├── .env.example       # Plantilla de variables de entorno (copiá a .env)
-├── config/            # Conexión a MongoDB
+├── config/            # Conexión a MongoDB y firebase admin
+├── middlewares/       # esAdmin / esAutenticado (validan el token de la dueña)
 ├── models/            # Modelos de datos (proyectos, mensajes, servicios, historial...)
-└── routes/            # Rutas/endpoints de la API
-└── scripts/           # Scripts utilitarios (importación desde Behance y Vercel)
+├── routes/            # Rutas/endpoints de la API
+├── scripts/           # Scripts utilitarios (importación desde Behance y Vercel, seeds)
+└── docs/              # consigna, evidencia de proceso y guía de defensa
 ```
 
 ## Puesta en marcha
