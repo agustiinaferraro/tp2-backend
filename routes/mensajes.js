@@ -33,8 +33,22 @@ router.get('/conversaciones', esAdmin, async (req, res) => {
           _id: { $toLower: { $trim: { input: '$email' } } },
           nombre: { $first: '$nombre' },
           email: { $first: { $toLower: { $trim: { input: '$email' } } } },
-          //la cantidad cuenta solo los mensajes de la persona, no las respuestas del admin
-          cantidad: { $sum: { $cond: [{ $ifNull: ['$esRespuesta', false] }, 0, 1] } },
+          //la cantidad cuenta solo los mensajes de la persona que falten por abrir:
+          //los que ya se leyeron (leidoEn con fecha) no vuelven a contar
+          cantidad: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: [{ $ifNull: ['$esRespuesta', false] }, false] },
+                    { $eq: [{ $ifNull: ['$leidoEn', null] }, null] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
           //whatsapp de la persona: se queda con el no vacio de la conversacion
           telefono: { $max: '$telefono' },
           ultimaFecha: { $first: '$createdAt' },
@@ -135,6 +149,28 @@ router.post('/conversaciones/:email/respuesta', esAdmin, async (req, res) => {
     res.status(201).json({ mensaje: 'Respuesta enviada', datos: nuevaRespuesta });
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al guardar la respuesta', error: error.message });
+  }
+});
+
+//post a /api/mensajes/conversaciones/:email/leer (solo admin)
+//marca los mensajes de esa persona como leidos: al abrir un chat el contador de la lista
+//baja a cero y no vuelve a aparecer hasta que llegue un mensaje nuevo (como en redes sociales)
+router.post('/conversaciones/:email/leer', esAdmin, async (req, res) => {
+  try {
+    const emailNormalizado = String(req.params.email).trim().toLowerCase();
+
+    const marcados = await Mensaje.updateMany(
+      {
+        $expr: { $eq: [{ $toLower: { $trim: { input: '$email' } } }, emailNormalizado] },
+        esRespuesta: { $ne: true },
+        leidoEn: null,
+      },
+      { $set: { leidoEn: new Date() } }
+    );
+
+    res.json({ mensaje: 'Conversación leída', marcados: marcados.modifiedCount });
+  } catch (error) {
+    res.status(500).json({ mensaje: 'Error al marcar la conversación como leída', error: error.message });
   }
 });
 

@@ -37,6 +37,12 @@ const mensajeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    leidoEn: {
+      //momento en que la admin abrio el chat: los mensajes de la persona sin esta fecha
+      //son los no leidos y son los unicos que muestran contador en la lista de chats
+      type: Date,
+      default: null,
+    },
     token: {
       //clave secreta de la conversacion: la usa el visitante para ver su propio chat
       type: String,
