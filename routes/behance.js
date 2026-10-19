@@ -266,6 +266,55 @@ export async function detalleDeGaleria(link, imagenPortada = '') {
   return { imagenes, titulo, portada, descripcion, estadisticas, publicadoEn, palabrasClave, ccv };
 }
 
+//el endpoint publico de behance devuelve el proyecto en json, con los modulos (imagenes y
+//video) adentro; se usa de red de seguridad cuando la pagina no muestra la galeria en html:
+//behance la entrega vacia a los visitantes sin sesion cuando el proyecto esta marcado como
+//contenido maduro (ahi ni el video ni las imagenes aparecen en el html, solo en json y solo
+//para quien tenga sesion)
+export async function detalleDeApi(id) {
+  if (!id) return null;
+  const { status, texto } = await fetchBehance(
+    `https://www.behance.net/v2/projects/${id}?client_id=BehanceWebSusi1`
+  );
+  if (status !== 200 || !texto) return null;
+  let proyecto;
+  try {
+    proyecto = JSON.parse(texto)?.project;
+  } catch {
+    //respuesta rara: se ignora y se vuelve a probar en la proxima corrida
+    return null;
+  }
+  if (!proyecto) return null;
+
+  const imagenes = [];
+  let video = '';
+  for (const modulo of proyecto.modules ?? []) {
+    if (modulo.type === 'image') {
+      const tamanios = modulo.sizes ?? {};
+      imagenes.push(tamanios.max_1200 ?? tamanios.disp ?? modulo.src ?? '');
+    }
+    if (modulo.type === 'video' && !video) {
+      const src = String(modulo.src ?? '');
+      if (/player\/ccv\//.test(src)) video = src;
+      else if (/^https?:.*\.mp4/i.test(src)) video = src;
+      else {
+        //algunos videos no traen src directo: se busca dentro del modulo (embed o renditions)
+        const pegado = JSON.stringify(modulo);
+        const ccv = pegado.match(/player\/ccv\/([A-Za-z0-9_-]{6,})\/embed/);
+        const mp4 = pegado.match(/https?:\/\/[^"\\]+\.mp4[^"\\]*/);
+        if (ccv) video = `https://www-ccv.adobe.io/v1/player/ccv/${ccv[1]}/embed?api_key=behance1`;
+        else if (mp4) video = mp4[0];
+      }
+    }
+  }
+
+  return {
+    matureContent: proyecto.mature_content === 1,
+    imagenes: imagenes.filter(Boolean),
+    video,
+  };
+}
+
 //decodifica las entidades html que behance deja en los textos (&quot;, &amp;, &lt;, ...);
 //hace falta en el titulo y en la descripcion completa, que se guardan como se ven en la pagina
 function decodificarEntidades(texto) {
@@ -428,6 +477,22 @@ export async function importarDetalles(tope = 15) {
       );
       sinGaleria++;
     } else if (detalle) {
+      //si la pagina no dejo ver ni la galeria ni el video (behance la entrega vacia a los que
+      //no tienen sesion, que es lo que pasa con los proyectos marcados como contenido maduro),
+      //se prueba con el endpoint publico en json; ese mismo dato avisa si el proyecto esta
+      //bloqueado por esa casilla, para que el log explique por que no baja nada
+      if (!detalle.imagenes.length || !detalle.ccv) {
+        const api = await detalleDeApi(proyecto.link.match(/gallery\/(\d+)/)?.[1] ?? '');
+        if (api) {
+          if (api.matureContent) {
+            console.warn(
+              `aviso: "${proyecto.titulo}" esta marcado como contenido maduro en behance; hasta que no se saque esa casilla behance no entrega ni el video ni la galeria a los visitantes sin sesion`
+            );
+          }
+          if (!detalle.imagenes.length && api.imagenes.length) detalle.imagenes = api.imagenes;
+          if (!detalle.ccv && api.video) detalle.videoUrl = api.video;
+        }
+      }
       const cambios = {
         imagenesBehance: detalle.imagenes,
         palabrasClave: detalle.palabrasClave,
@@ -459,6 +524,8 @@ export async function importarDetalles(tope = 15) {
       //el video solo se toca si behance lo tiene: asi no se pisa un video subido a mano
       if (detalle.ccv) {
         cambios.video = `https://www-ccv.adobe.io/v1/player/ccv/${detalle.ccv}/embed?api_key=behance1`;
+      } else if (detalle.videoUrl) {
+        cambios.video = detalle.videoUrl;
       }
       await Proyecto.updateOne({ _id: proyecto._id }, { $set: cambios });
       sincronizados++;
