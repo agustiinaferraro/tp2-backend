@@ -1,115 +1,31 @@
 //script de importacion de proyectos desde el feed rss de behance
-//se corre una sola vez (o varias, porque no repite proyectos) para poblar la base sin cargar a mano
-//tambien actualiza titulo/resumen/imagen de proyectos que ya existan por link (si cambiaron en behance)
-//ademas refresca el detalle de las galerias (imagenes completas, video, descripcion, stats,
-//fecha y keywords): es el script del github action, que corre cada 6 horas sin limite de tiempo
+//se corre desde el github action (y tambien a mano para no esperar al cron):
+//crea los proyectos nuevos del feed, refresca titulo/resumen/portada/link de los que ya estan
+//y ademas raspa el detalle de las galerias (imagenes completas, video, descripcion, stats,
+//fecha, keywords, titulo y resumen): la logica vive en routes/behance.js para que el script,
+//el endpoint del panel y el cron usen exactamente lo mismo
 //uso: node scripts/importar-behance.js
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import Proyecto from '../models/Proyecto.js';
-import { importarDetalles } from '../routes/behance.js';
+import { importarRss, importarDetalles } from '../routes/behance.js';
 
 dotenv.config();
-
-const URL_RSS = 'https://www.behance.net/agustiinaferraro.rss';
-
-//quita etiquetas de html y deja el texto limpio
-function limpiarHTML(texto) {
-  return texto
-    .replace(/<img[^>]*>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-//saca el valor de un campo con cdata de un trozo de xml
-function obtenerCampo(bloque, nombre) {
-  const m = bloque.match(new RegExp(`<${nombre}>\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]\\s*>`, 'i'));
-  return m ? m[1] : '';
-}
-
-//primera imagen del bloque html de la descripcion (miniatura del proyecto)
-function obtenerPortada(descripcion) {
-  const m = descripcion.match(/<img[^>]+src=['"]([^'"]+)['"]/i);
-  return m ? m[1] : '';
-}
 
 async function importar() {
   await mongoose.connect(process.env.MONGODB_URI);
 
-  const respuesta = await fetch(URL_RSS);
-  if (!respuesta.ok) {
-    console.error('No se pudo descargar el feed, codigo:', respuesta.status);
-    process.exit(1);
-  }
-  const xml = await respuesta.text();
-
-  const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map((m) => m[1]);
-  console.log('proyectos encontrados en el feed:', items.length);
-  if (items.length === 0) {
-    console.error('El feed llego vacio (posible bloqueo de behance). No se hace ningun cambio.');
-    process.exit(1);
-  }
-
-  let creados = 0;
-  let actualizados = 0;
-  let aldia = 0;
-  const importados = [];
-
-  for (const item of items) {
-    const titulo = limpiarHTML(obtenerCampo(item, 'title'));
-    const link = obtenerCampo(item, 'link').trim();
-    const descripcion = obtenerCampo(item, 'description');
-    const resumen = limpiarHTML(descripcion);
-    const imagen = obtenerPortada(descripcion);
-
-    if (!titulo || !link) continue;
-
-    const existente = await Proyecto.findOne({ link });
-    if (existente) {
-      const cambios = {};
-      //titulo y resumen solo se actualizan si la dueña no los dejo como propios desde el panel
-      if (!existente.tituloManual && existente.titulo !== titulo) cambios.titulo = titulo;
-      if (!existente.resumenManual && existente.resumen !== resumen) cambios.resumen = resumen;
-      //la portada solo se completa si esta vacia (un reemplazo propio no se pisa)
-      if (!existente.imagen && imagen) cambios.imagen = imagen;
-      if (Object.keys(cambios).length) {
-        await Proyecto.updateOne({ _id: existente._id }, cambios);
-        actualizados++;
-      } else {
-        aldia++;
-      }
-      continue;
-    }
-
-    const creado = await Proyecto.create({
-      titulo,
-      resumen,
-      imagen,
-      imagenes: [],
-      link,
-      servicio: '',
-      tags: [],
-      destacado: false,
-    });
-    creados++;
-    importados.push(creado);
-  }
-
-  console.log(`creados nuevos: ${creados}`);
-  console.log(`actualizados por cambios en behance: ${actualizados}`);
-  console.log(`ya estaban al dia: ${aldia}`);
-  for (const p of importados) {
+  const rss = await importarRss();
+  console.log('proyectos encontrados en el feed:', rss.items);
+  console.log(`creados nuevos: ${rss.creados}`);
+  console.log(`actualizados por cambios en behance: ${rss.actualizados}`);
+  console.log(`ya estaban al dia: ${rss.aldia}`);
+  for (const p of rss.importados) {
     console.log(`- ${p.titulo} | ${p.link}`);
   }
 
-  //detalle de las galerias pendientes (imagenes, video, descripcion, stats, fecha y keywords);
-  //cada proyecto se refresca como maximo 1 vez por dia y por corrida se tocan hasta 15
+  //detalle de las galerias pendientes (imagenes, video, descripcion, stats, fecha, keywords,
+  //titulo y resumen); cada proyecto se refresca como maximo 1 vez por dia y por corrida se
+  //tienen hasta 15
   const detalles = await importarDetalles();
   console.log(
     `detalle de galerias: ${detalles.sincronizados} sincronizados de ${detalles.pendientes} pendientes` +

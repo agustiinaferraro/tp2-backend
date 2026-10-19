@@ -18,12 +18,17 @@ const USER_AGENT =
 //fetchea una url de behance saltando el desafio que pide evaluar javascript
 //(el desafio llega como 403 y entrega la cookie js_challenge_value; se repite con esa cookie,
 //volviendo a leer el valor si behance vuelve a desafiar)
+//devuelve el status y el texto juntos: el status hace falta para distinguir una galeria
+//borrada (404) de una pagina viva que vino en otra variante (behance no siempre manda el
+//mismo html, y sin el codigo no se podria saber si el proyecto existe o no)
 async function fetchBehance(url, intentos = 4) {
   let cookie = '';
+  let status = 0;
   for (let i = 0; i < intentos; i++) {
     const respuesta = await fetch(url, {
       headers: cookie ? { 'user-agent': USER_AGENT, cookie } : { 'user-agent': USER_AGENT },
     });
+    status = respuesta.status;
     const texto = await respuesta.text();
     const desafio = texto.match(/js_challenge_value=([a-f0-9]{64,})/);
     if (desafio) {
@@ -31,10 +36,10 @@ async function fetchBehance(url, intentos = 4) {
       cookie = `js_challenge_value=${desafio[1]}`;
       continue;
     }
-    return texto;
+    return { status, texto };
   }
   //si se agotaron los intentos devuelve vacio (behance no dejo entrar)
-  return '';
+  return { status, texto: '' };
 }
 
 //orden de preferencia de las variantes de imagen que behance repite para cada archivo:
@@ -83,6 +88,45 @@ function hashDeArchivo(nombre) {
   return String(nombre ?? '').split('.')[1] ?? '';
 }
 
+//el texto del estado de behance a veces viene con los escapes de json anidados (\\n, \\"), que
+//quedan como texto literal dentro del string ya parseado: se les da una pasada mas para dejar
+//texto plano con saltos de linea reales (sin eso el resumen mostraria "\n" a la vista)
+function desescapar(texto) {
+  return String(texto ?? '')
+    .replace(/\\n/g, '\n')
+    .replace(/\\t/g, ' ')
+    .replace(/\\"/g, '"')
+    .replace(/\\\//g, '/');
+}
+
+//lee la descripcion del bloque json-ld de la pagina: es la descripcion canonica del proyecto
+//(la que behance muestra en la ficha) y la unica fuente que no depende de la variante de la
+//pagina que toque; devuelve vacio si el bloque no la trae, para que se use el estado embebido
+function descripcionDelJsonLd(html) {
+  const bloque = html.match(/<script[^>]*type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/);
+  if (!bloque) return '';
+  try {
+    const datos = JSON.parse(bloque[1]);
+    let mejor = '';
+    const recorrer = (nodo) => {
+      if (!nodo || typeof nodo !== 'object') return;
+      if (Array.isArray(nodo)) {
+        nodo.forEach(recorrer);
+        return;
+      }
+      if (typeof nodo.description === 'string' && nodo.description.length > mejor.length) {
+        mejor = nodo.description;
+      }
+      Object.values(nodo).forEach(recorrer);
+    };
+    recorrer(datos);
+    return mejor;
+  } catch {
+    //json roto: se ignora y se sigue con el estado embebido
+    return '';
+  }
+}
+
 //trae el detalle completo de una galeria de behance con un solo fetch de su pagina:
 //el html trae embebido el estado con todos los modulos (imagenes y players de video),
 //la descripcion completa, las estadisticas, la fecha de publicacion y las keywords
@@ -98,21 +142,23 @@ export async function detalleDeGaleria(link, imagenPortada = '') {
       const oembed = await fetchBehance(
         `https://www.behance.net/services/oembed?url=${encodeURIComponent(link)}`
       );
-      id = JSON.parse(oembed)?.url?.match(/gallery\/(\d+)/)?.[1] ?? '';
+      id = JSON.parse(oembed.texto)?.url?.match(/gallery\/(\d+)/)?.[1] ?? '';
     } catch {
       //sin oembed no hay como saber el id de la galeria
     }
   }
   if (!id) return null;
 
-  const html = await fetchBehance(`https://www.behance.net/gallery/${id}/modules`);
+  const { status, texto: html } = await fetchBehance(`https://www.behance.net/gallery/${id}/modules`);
   //respuestas cortas significan que el desafio no se pudo saltear: se reintenta en la proxima corrida
   if (html.length < 100000) return null;
-  //la pagina llego entera pero sin modulos embebidos: behance retiro o borro el proyecto
-  //(avisa con un aviso de takedown y no hay nada que sincronizar)
-  if (!html.includes('__typename')) {
+  //la galeria responde 404: behance borro o retiro el proyecto, se marca para no volver a
+  //entrar; los datos que ya se tenian se conservan tal cual
+  if (status === 404) {
     return {
       imagenes: [],
+      titulo: '',
+      portada: '',
       descripcion: '',
       estadisticas: null,
       publicadoEn: null,
@@ -147,18 +193,31 @@ export async function detalleDeGaleria(link, imagenPortada = '') {
     imagenes.push(`https://mir-s3-cdn-cf.behance.net/project_modules/${variante}/${archivo}`);
   }
 
-  //descripcion completa: la del meta viene cortada con "...", la del estado embebido es la posta
-  //(se queda con la mas larga de todas las que aparezcan en la pagina)
-  let descripcion = '';
-  let posicion = 0;
-  while (posicion < html.length) {
-    const marca = html.indexOf('"description":"', posicion);
-    if (marca === -1) break;
-    //marca apunta a la comilla que abre la clave; el valor arranca 14 caracteres mas adelante
-    const leido = leerTextoJson(html, marca + 14);
-    if (leido.texto.length > descripcion.length) descripcion = leido.texto;
-    posicion = Math.max(leido.fin, marca + 15);
+  //titulo del proyecto: el og:title viene como "Titulo - Autor" y es la unica fuente confiable,
+  //porque el feed rss de behance manda los titulos con un "?" donde deberia ir el separador
+  //(behance rompe ese caracter al generar el feed, pero la pagina lo muestra bien)
+  const ogTitulo = html.match(/<meta property="og:title" content="([^"]*)"/)?.[1] ?? '';
+  const titulo = decodificarEntidades(ogTitulo).replace(/\s*-\s*Agustina Ferraro\s*$/, '').trim();
+
+  //portada actual: el og:image trae la variante mas grande y es la unica forma de enterarse
+  //de que la dueña cambio la miniatura en behance (el feed rss solo cubre los ultimos 12)
+  const portada = html.match(/<meta property="og:image" content="([^"]*)"/)?.[1] ?? '';
+
+  //descripcion completa: primero la del json-ld (canonica); si no esta, la mas larga de las que
+  //aparezcan en el estado embebido de la pagina
+  let descripcion = descripcionDelJsonLd(html);
+  if (!descripcion) {
+    let posicion = 0;
+    while (posicion < html.length) {
+      const marca = html.indexOf('"description":"', posicion);
+      if (marca === -1) break;
+      //marca apunta a la comilla que abre la clave; el valor arranca 14 caracteres mas adelante
+      const leido = leerTextoJson(html, marca + 14);
+      if (leido.texto.length > descripcion.length) descripcion = leido.texto;
+      posicion = Math.max(leido.fin, marca + 15);
+    }
   }
+  descripcion = decodificarEntidades(desescapar(descripcion));
 
   //estadisticas: behance las guarda juntas en "stats" cerca del cierre del estado
   let estadisticas = null;
@@ -204,19 +263,23 @@ export async function detalleDeGaleria(link, imagenPortada = '') {
   //video: el embed de adobe ccv (el mismo que resuelve el hero de la home en vivo)
   const ccv = html.match(/player\/ccv\/([A-Za-z0-9_-]{6,})\/embed/)?.[1] ?? null;
 
-  return { imagenes, descripcion, estadisticas, publicadoEn, palabrasClave, ccv };
+  return { imagenes, titulo, portada, descripcion, estadisticas, publicadoEn, palabrasClave, ccv };
 }
 
-//quita etiquetas de html y deja el texto limpio
-function limpiarHTML(texto) {
-  return texto
-    .replace(/<img[^>]*>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
+//decodifica las entidades html que behance deja en los textos (&quot;, &amp;, &lt;, ...);
+//hace falta en el titulo y en la descripcion completa, que se guardan como se ven en la pagina
+function decodificarEntidades(texto) {
+  return String(texto ?? '')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&#39;/g, "'")
-    .replace(/&quot;/g, '"')
+    .replace(/&quot;/g, '"');
+}
+
+//quita etiquetas de html y deja el texto limpio
+function limpiarHTML(texto) {
+  return decodificarEntidades(String(texto ?? '').replace(/<img[^>]*>/gi, ' ').replace(/<[^>]+>/g, ' '))
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -251,9 +314,12 @@ function categoriasPorTitulo(titulo) {
   return [];
 }
 
-//trae los proyectos nuevos del feed rss (los ultimos publicados) y crea los que falten
-async function importarRss() {
-  const xml = await fetchBehance(URL_RSS);
+//trae los proyectos nuevos del feed rss (los ultimos 12 publicados), crea los que falten y
+//refresca titulo, resumen, portada y link de los que ya estan;
+//la busqueda es por el numero de galeria y no por el link entero, porque behance cambia el
+//slug del link cada vez que cambia el titulo del proyecto (si no, un renombre duplicaria)
+export async function importarRss() {
+  const { texto: xml } = await fetchBehance(URL_RSS);
   const items = [...xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)].map((m) => m[1]);
   if (items.length === 0) {
     throw new Error('El feed llego vacio (posible bloqueo de behance)');
@@ -261,6 +327,8 @@ async function importarRss() {
 
   let creados = 0;
   let actualizados = 0;
+  let aldia = 0;
+  const importados = [];
 
   for (const item of items) {
     const descripcion = obtenerCampo(item, 'description');
@@ -271,22 +339,36 @@ async function importarRss() {
 
     if (!titulo || !link) continue;
 
-    const existente = await Proyecto.findOne({ link });
+    const idGaleria = link.match(/behance\.net\/gallery\/(\d+)/)?.[1] ?? '';
+    const existente = idGaleria
+      ? await Proyecto.findOne({ link: new RegExp(`behance\\.net\\/gallery\\/${idGaleria}(\\/|\\?|$)`) })
+      : await Proyecto.findOne({ link });
     if (existente) {
       const cambios = {};
-      //titulo y resumen solo se actualizan si la dueña no los dejo como propios desde el panel
-      if (!existente.tituloManual && existente.titulo !== titulo) cambios.titulo = titulo;
-      if (!existente.resumenManual && existente.resumen !== resumen) cambios.resumen = resumen;
-      if (!existente.imagen && imagen) cambios.imagen = imagen;
+      //el link se deja como lo tiene behance hoy, por si cambio el slug del proyecto
+      if (existente.link !== link) cambios.link = link;
+      //el titulo solo se toma si el feed lo mando limpio: si trae un "?" entre palabras es que
+      //behance rompio el separador, y ahi manda el de la pagina (lo levanta importarDetalles)
+      const tituloMangled = /\s\?\s/.test(titulo);
+      if (!existente.tituloManual && !tituloMangled && existente.titulo !== titulo) {
+        cambios.titulo = titulo;
+      }
+      //el resumen es la descripcion de behance: la misma que levanta importarDetalles
+      //(las dos fuentes dan el mismo texto, asi que no se pisan entre ellas)
+      if (!existente.resumenManual && resumen && existente.resumen !== resumen) cambios.resumen = resumen;
+      //la portada NO se toca desde el rss: ahi viene en baja (404px) y pisaria la que ya salio
+      //de la galeria; la miniatura la refresca importarDetalles, que lee el og:image en alta
       if (Object.keys(cambios).length) {
         await Proyecto.updateOne({ _id: existente._id }, cambios);
         actualizados++;
+      } else {
+        aldia++;
       }
       continue;
     }
 
     const servicios = categoriasPorTitulo(titulo);
-    await Proyecto.create({
+    const creado = await Proyecto.create({
       titulo,
       resumen,
       imagen,
@@ -298,9 +380,10 @@ async function importarRss() {
       destacado: false,
     });
     creados++;
+    importados.push(creado);
   }
 
-  return { items: items.length, creados, actualizados };
+  return { items: items.length, creados, actualizados, aldia, importados };
 }
 
 //refresca el detalle completo (imagenes, video, descripcion, estadisticas, fecha y keywords)
@@ -347,13 +430,32 @@ export async function importarDetalles(tope = 15) {
     } else if (detalle) {
       const cambios = {
         imagenesBehance: detalle.imagenes,
-        descripcionCompleta: detalle.descripcion,
         palabrasClave: detalle.palabrasClave,
         estadisticas: detalle.estadisticas,
         publicadoEn: detalle.publicadoEn,
         sincronizadoDetalleEn: new Date(),
         ultimoChequeoVideo: new Date(),
       };
+      //titulo y resumen salen siempre de la pagina de behance: es la fuente unica, asi un
+      //renombre o una descripcion nueva hechos ahi llegan a todos los proyectos (el rss solo
+      //cubre los ultimos 12) y ademas sin el "?" con el que el feed rompe el separador;
+      //los campos marcados a mano desde el panel se respetan como hasta ahora
+      if (!proyecto.tituloManual && detalle.titulo && detalle.titulo !== proyecto.titulo) {
+        cambios.titulo = detalle.titulo;
+      }
+      const resumen = limpiarHTML(detalle.descripcion);
+      if (!proyecto.resumenManual && resumen && resumen !== proyecto.resumen) {
+        cambios.resumen = resumen;
+      }
+      //la descripcion completa solo se pisa cuando vino texto: una pagina a medias de behance
+      //no deberia borrar la que ya estaba guardada
+      if (detalle.descripcion) cambios.descripcionCompleta = detalle.descripcion;
+      //la portada se refresca con la de behance, salvo que la hayan puesto a mano desde el
+      //panel (data uri): ahi es decision de la dueña y el scrape no la pisa
+      const portadaPropia = proyecto.imagen && !/^https?:/i.test(proyecto.imagen);
+      if (detalle.portada && !portadaPropia && detalle.portada !== proyecto.imagen) {
+        cambios.imagen = detalle.portada;
+      }
       //el video solo se toca si behance lo tiene: asi no se pisa un video subido a mano
       if (detalle.ccv) {
         cambios.video = `https://www-ccv.adobe.io/v1/player/ccv/${detalle.ccv}/embed?api_key=behance1`;
