@@ -556,11 +556,21 @@ export async function sincronizar(topeDetalles = 15) {
 }
 
 //get a /api/behance/video?ccv=<id>
-//publico: el hero lo usa para resolver el mp4 actual del embed de adobe (la url firmada expira)
+//publico: el hero y las tarjetas de las grillas resuelven el mp4 actual del embed de adobe
+//(la url firmada expira, se pide fresca). se cachea un rato en memoria: ahora varios
+//componentes piden el mismo video en la misma visita y sin este cache adobe recibiria una
+//llamada por tarjeta cada vez que alguien abre la home
+const DURACION_CACHE_VIDEO_MS = 10 * 60 * 1000;
+const cacheDeVideos = new Map();
+
 router.get('/video', async (req, res) => {
   const ccv = String(req.query.ccv ?? '');
   if (!/^[A-Za-z0-9_-]{6,}$/.test(ccv)) {
     return res.status(400).json({ mensaje: 'El id de video no es valido' });
+  }
+  const guardado = cacheDeVideos.get(ccv);
+  if (guardado && guardado.hasta > Date.now()) {
+    return res.json({ ccv, mp4: guardado.mp4 });
   }
   try {
     const html = await fetch(`https://www-ccv.adobe.io/v1/player/ccv/${ccv}/embed?api_key=behance1`, {
@@ -570,6 +580,7 @@ router.get('/video', async (req, res) => {
     if (!mp4) {
       return res.status(404).json({ mensaje: 'El video no esta disponible' });
     }
+    cacheDeVideos.set(ccv, { mp4: mp4[1], hasta: Date.now() + DURACION_CACHE_VIDEO_MS });
     res.json({ ccv, mp4: mp4[1] });
   } catch (error) {
     res.status(500).json({ mensaje: 'Error al obtener el video', error: error.message });
