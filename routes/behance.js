@@ -481,10 +481,12 @@ export async function importarDetalles(tope = 15) {
       //no tienen sesion, que es lo que pasa con los proyectos marcados como contenido maduro),
       //se prueba con el endpoint publico en json; ese mismo dato avisa si el proyecto esta
       //bloqueado por esa casilla, para que el log explique por que no baja nada
+      let bloqueadoMadurez = false;
       if (!detalle.imagenes.length || !detalle.ccv) {
         const api = await detalleDeApi(proyecto.link.match(/gallery\/(\d+)/)?.[1] ?? '');
         if (api) {
           if (api.matureContent) {
+            bloqueadoMadurez = true;
             console.warn(
               `aviso: "${proyecto.titulo}" esta marcado como contenido maduro en behance; hasta que no se saque esa casilla behance no entrega ni el video ni la galeria a los visitantes sin sesion`
             );
@@ -527,9 +529,27 @@ export async function importarDetalles(tope = 15) {
       } else if (detalle.videoUrl) {
         cambios.video = detalle.videoUrl;
       }
+      //si behance la sigue bloqueando por la casilla de contenido maduro, NO se marca como
+      //sincronizado: asi la proxima corrida (cada 6 horas por el cron) la reintenta sola y
+      //en cuanto se saque esa casilla baja galeria y video sin que nadie tenga que tocar nada
+      const sigueBloqueada =
+        bloqueadoMadurez && !detalle.imagenes.length && !detalle.ccv && !detalle.videoUrl;
+      if (sigueBloqueada) {
+        delete cambios.sincronizadoDetalleEn;
+        delete cambios.ultimoChequeoVideo;
+        //tampoco se pisan la galeria ni la portada con lo poco que entrega behance cuando la
+        //bloquea: ahi la portada que manda es su imagen "blocked" y la galeria viene vacia,
+        //y eso no deberia borrar lo que ya se tenia guardado del proyecto
+        delete cambios.imagenesBehance;
+        delete cambios.imagen;
+      }
       await Proyecto.updateOne({ _id: proyecto._id }, { $set: cambios });
-      sincronizados++;
-      imagenesTotales += detalle.imagenes.length;
+      if (sigueBloqueada) {
+        fallidos++;
+      } else {
+        sincronizados++;
+        imagenesTotales += detalle.imagenes.length;
+      }
     } else {
       //behance no dejo entrar: no se marca nada para reintentar en la proxima corrida
       fallidos++;
