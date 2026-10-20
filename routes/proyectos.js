@@ -50,7 +50,7 @@ router.get('/:id', async (req, res) => {
 //crea un proyecto nuevo con titulo (obligatorio), y resumen, imagenes, imagen, servicio y destacado opcionales
 router.post('/', esAdmin, async (req, res) => {
   try {
-    const { titulo, resumen, imagen, imagenes, servicio, servicios, destacado, link, video } = req.body ?? {};
+    const { titulo, resumen, imagen, imagenes, servicio, servicios, destacado, link, video, tags, aprendizajes } = req.body ?? {};
 
     //validacion: el titulo es obligatorio
     if (!titulo || !titulo.trim()) {
@@ -67,6 +67,12 @@ router.post('/', esAdmin, async (req, res) => {
         ? [servicio.trim()]
         : [];
 
+    //los tags son una lista de palabras: se limpian vacios y repetidos.
+    //el formulario del panel los manda separados por coma y el front ya los arma como array
+    const listaTags = Array.isArray(tags)
+      ? [...new Set(tags.map((t) => String(t).trim()).filter(Boolean))]
+      : [];
+
     const nuevoProyecto = await Proyecto.create({
       titulo: titulo.trim(),
       resumen: resumen ?? '',
@@ -74,7 +80,9 @@ router.post('/', esAdmin, async (req, res) => {
       imagenes: galeria,
       servicio: listaServicios[0] ?? '',
       servicios: listaServicios,
-      tags: [],
+      tags: listaTags,
+      //texto propio de la dueña: behance nunca lo sincroniza
+      aprendizajes: typeof aprendizajes === 'string' ? aprendizajes.trim() : '',
       link: link ?? '',
       video: video ?? '',
       destacado: destacado === true,
@@ -104,6 +112,7 @@ router.put('/:id', esAdmin, async (req, res) => {
       tituloManual,
       resumenManual,
       aprendizajes,
+      tags,
     } = req.body ?? {};
 
     //se arma un objeto solo con los campos que vinieron en la peticion
@@ -116,6 +125,13 @@ router.put('/:id', esAdmin, async (req, res) => {
     //este campo es solo texto tuyo: no lo sincroniza behance ni nadie mas
     if (aprendizajes !== undefined) {
       cambios.aprendizajes = typeof aprendizajes === 'string' ? aprendizajes.trim() : '';
+    }
+    //lista de tags: si llega como array se limpia; si llega en otro formato se vacia
+    //(antes no se manejaba aca y los tags que se editaban se perdian en silencio)
+    if (tags !== undefined) {
+      cambios.tags = Array.isArray(tags)
+        ? [...new Set(tags.map((t) => String(t).trim()).filter(Boolean))]
+        : [];
     }
     //estos dos marcan el texto como propio: el sync de behance deja de pisarlo
     if (tituloManual !== undefined) cambios.tituloManual = tituloManual === true;
