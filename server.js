@@ -26,7 +26,16 @@ dotenv.config();
 const app = express();
 
 //middlewares globales
-app.use(cors());           //permite que el frontend (astro) pueda consultar la api
+//cors: solo el sitio propio (produccion y localhost en el dev) puede leer la api desde un navegador.
+//las peticiones sin origin (curl, scripts, el cron de vercel) no llevan cabeceras y pasan igual.
+const ORIGENES_PERMITIDOS = [
+  'https://agustinaportfolio.vercel.app',
+  'http://localhost:4321',
+  'http://127.0.0.1:4321',
+];
+app.use(cors({
+  origin: (origin, cb) => cb(null, !origin || ORIGENES_PERMITIDOS.includes(origin)),
+}));
 app.use(express.json({ limit: '25mb' }));   //permite recibir json en el body, con margen para imagenes en base64
 
 //middleware: se conecta a mongodb antes de cada peticion
