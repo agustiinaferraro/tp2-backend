@@ -7,7 +7,7 @@ Mi preparación para la instancia de **Examen Final — Programación Multimedia
 ## 1. Discurso de apertura (30–60 segundos)
 
 1. **Qué es:** es mi portfolio personal, donde me presento como diseñadora multimedia y desarrolladora full stack.
-2. **La idea:** una web con identidad propia (tema oscuro, violeta en los botones, verde en los detalles de texto) que además demuestra mi recorrido técnico completo: sitio estático con Astro, componentes React interactivos, una API REST propia y una base MongoDB.
+2. **La idea:** una web con identidad propia (tema oscuro, verde en los botones y las acciones, violeta en los bordes, módulos y el logo) que además demuestra mi recorrido técnico completo: sitio estático con Astro, componentes React interactivos, una API REST propia y una base MongoDB.
 3. **El recorrido:** inicio (quién soy y qué destaco) → sobre mí → proyectos (dinámicos, filtrables, con detalle tipo Behance) → servicios (páginas propias por categoría) → contacto (formulario que guarda en la base). Y el panel `/admin`, que se abre **solo cuando la sesión es la mía** (cuenta de Firebase, token validado en el backend): desde ahí gestiono TODO el contenido, incluido el **historial de proyectos con restauración**.
 4. **Decisión clave de arquitectura:** elegí un sitio estático (Astro) y llevo la interactividad consumiendo mi propia API, que lee MongoDB Atlas. En producción la API **queda oculta para el visitante**: el navegador solo llama a `/api` en el dominio del sitio y un rewrite de Vercel la enruta al backend por atrás. Cada push a `main` redespliega frontend y backend en Vercel.
 

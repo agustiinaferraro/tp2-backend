@@ -48,7 +48,9 @@ Partí de una estructura clásica de portfolio (inicio, sobre mí, servicios, co
 
 19. **Los proyectos con portada en movimiento van primero en cada categoría:** el criterio dejó de ser "ser de la categoría de animación" y pasó a ser **"que la portada se mueva sola"** (tiene video o es un gif animado). Así, por ejemplo, dentro de UX/UI los proyectos con demo en video arrancan adelante, y lo mismo en cada sección de /proyectos (carrusel y grilla filtrada). También lo apliqué a la **página de cada servicio** (/servicios/[slug]), que antes listaba los proyectos en orden de base. El orden anterior (Motion Graphics primero, Edición de Video al final por compartir proyectos) sigue vigente como desempate, y el orden del resto de los proyectos no se toca.
 
-La decisión de identidad la sostuve desde el inicio: **tema oscuro** (zinc-950) con **violeta (#B884E7) solo en los botones** y **verde (#69F5CC) en los detalles de texto**, tipografía limpia, microanimaciones de hover, la **forma de escudo** en las tarjetas de servicios y sobre mí, y una marca gráfica consistente (logo circular, "Contactate", FAB "¡Hablemos!").
+20. **Cambio de roles de la paleta (verde = acción, violeta = estructura):** al alinear el código con la identidad que documenté, invertí los roles de los dos colores de marca. Ahora **el verde (#69F5CC) es el color de acción**: botones principales de toda la app (hero, contactate, enviar formulario, enviar comentario/chat, guardar en el panel), chips de categoría activos, botones del admin y hasta el outline de foco accesible. Y **el violeta (#B884E7) quedó para la estructura**: bordes de las tarjetas (servicios, sobre mí, proyectos), etiquetas, los títulos de sección en mayúscula, el logo, los módulos como "Qué aprendí" y los hovers secundarios. El cambio fue un swap de las clases de Tailwind en los componentes, con tres excepciones cuidadas: los elementos de **WhatsApp** (el FAB "¡Hablemos!", el botón de responder desde la bandeja y la burbuja verde del visitante) usan el verde-whatsapp (#25D366), que es un color aparte de la paleta y no se toca; los gradientes de los marcos de escudo (violeta → blanco → verde) siguen usando los dos colores a propósito; y el skip-link de accesibilidad quedó en verde.
+
+La decisión de identidad la sostuve desde el inicio: **tema oscuro** (zinc-950) con **verde (#69F5CC) en los botones y las acciones** y **violeta (#B884E7) en los bordes, los módulos y el logo**, tipografía limpia, microanimaciones de hover, la **forma de escudo** en las tarjetas de servicios y sobre mí, y una marca gráfica consistente (logo circular, "Contactate", FAB "¡Hablemos!").
 
 ## Pruebas que hice
 
@@ -101,7 +103,7 @@ Tal como pide la consigna, registro acá el uso de herramientas de IA (asistente
 - Algunas soluciones que propuso las descarté por no ajustarse a la identidad o al alcance elegido.
 
 **Decisiones de diseño y arquitectura**
-- La identidad visual (tema oscuro + violeta en los botones y verde en los detalles de texto) y el tono de los textos.
+- La identidad visual (tema oscuro + verde en los botones y las acciones, violeta en la estructura: bordes, módulos y logo) y el tono de los textos.
 - Qué cuenta (mi email) es la única que puede entrar al panel.
 - Preferir la página `/admin` dedicada al login modal.
 - Elegir "importar desde Behance y mostrar en la app" en lugar de redirigir.
