@@ -93,6 +93,7 @@ Tal como pide la consigna, registro acá el uso de herramientas de IA (asistente
 - Implementar features completos (panel admin, detalle tipo Behance, galería de imágenes, filtros por categoría, buscador, importación desde Behance, historial con restauración, cambio de cuenta multi-sesión).
 - Diagnosticar y resolver errores (límite de request de Vercel, `window` en build estático, tests con `curl`/PowerShell, problemas de encoding, carreras de sesión al cambiar de cuenta).
 - Redactar esta documentación y la guía de defensa.
+- Redactar los 56 textos del campo **"Qué aprendí"**: para los 42 proyectos de Behance la IA los redactó a partir de la descripción real de cada galería, y para los 14 de programación fui yo quien le pasé qué hacía cada proyecto (y que todos son React menos *Com Aplicacion* y *Cortinas Metálicas*, que son JavaScript vanilla) para que los armara. Los leí, los corregí a mi voz y los cargué en la base; siguen siendo editables desde el panel.
 
 **Qué partes revisé, adapté o descarté**
 - Todo el código que propuso lo **revisé, adapté y probé** antes de considerarlo hecho: compilación, prueba local y en producción.
