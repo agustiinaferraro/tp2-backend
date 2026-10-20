@@ -351,6 +351,11 @@ function categoriasPorTitulo(titulo) {
   if (/(ANIMAC|LOGO ANIMADO|TRAILER|TIPOGRAFIA ANIMADA|MOTION|VIDEO|3D)/.test(t)) {
     return ['edicion-de-video', 'motion-graphics'];
   }
+  //landing con video promocional: la landing manda (ux/ui) y el video suma las categorias de motion
+  //va antes de la regla de ux/ui, que tambien cazaria la palabra "landing"
+  if (/LANDING/.test(t) && /(VIDEO|PROMO)/.test(t)) {
+    return ['diseno-ux-ui', 'edicion-de-video', 'motion-graphics'];
+  }
   if (/(WEB|APP MOBILE|INTERFAZ|LANDING|UX|UI|MOBILE|MOODBOARD|PROTOTIPO|RESTYLING)/.test(t)) {
     return ['diseno-ux-ui'];
   }
